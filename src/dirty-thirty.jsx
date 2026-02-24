@@ -592,7 +592,7 @@ export default function App() {
     setLoadingPlayers(true); setApiError(null);
     try {
       // Try today first
-      let res = await apiFetch("/games");
+      let res = await apiFetch("/today-players");
       
       // If no games today, try next 30 days to find upcoming March Madness games
       if (res.success && res.players.length === 0) {
@@ -600,7 +600,7 @@ export default function App() {
           const nextDate = new Date();
           nextDate.setDate(nextDate.getDate() + i);
           const dateStr = nextDate.toISOString().slice(0, 10).replace(/-/g, "");
-          const nextRes = await apiFetch(`/games?date=${dateStr}`);
+          const nextRes = await apiFetch(`/today-players?date=${dateStr}`);
           if (nextRes.success && nextRes.players.length > 0) {
             // Found upcoming games — show players but mark them all as not locked
             const dateLabel = nextDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -638,19 +638,22 @@ export default function App() {
     try {
       const res = await apiFetch(`/live-scores?games=${gameIds.filter(Boolean).join(",")}`);
       if (!res.success) return;
+      // Build lookup map: playerId -> {points, status, gameId}
+      const playerMap = {};
+      for (const p of res.players || []) {
+        playerMap[p.id] = p;
+      }
       let live = 0;
       setPlayers(prev => prev.map(p => {
-        const gs = res.scores[p.gameId]; if (!gs) return p;
-        if (gs.status === "STATUS_IN_PROGRESS") live++;
-        const pts = gs.players?.[p.espnId];
-        return { ...p, isLive: gs.status === "STATUS_IN_PROGRESS", isOver: gs.status === "STATUS_FINAL", isLocked: gs.status !== "STATUS_SCHEDULED" || p.isLocked, points: pts !== undefined ? pts : p.points };
+        const update = playerMap[p.id]; if (!update) return p;
+        if (update.status === "STATUS_IN_PROGRESS") live++;
+        return { ...p, isLive: update.status === "STATUS_IN_PROGRESS", isOver: update.status === "STATUS_FINAL", isLocked: update.status !== "STATUS_SCHEDULED", points: update.points !== null ? update.points : p.points };
       }));
       setLiveCount(live);
       setPicks(prev => prev.map(pick => {
         if (!pick) return null;
-        const gs = res.scores[pick.gameId]; if (!gs) return pick;
-        const pts = gs.players?.[pick.espnId];
-        return pts !== undefined ? { ...pick, points: pts } : pick;
+        const update = playerMap[pick.id]; if (!update) return pick;
+        return update.points !== null ? { ...pick, points: update.points } : pick;
       }));
     } catch (e) { console.warn("Live update failed:", e.message); }
   }
