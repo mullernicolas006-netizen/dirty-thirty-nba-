@@ -592,7 +592,7 @@ export default function App() {
     setLoadingPlayers(true); setApiError(null);
     try {
       // Try today first
-      let res = await apiFetch("/today-players");
+      let res = await apiFetch("/games");
       
       // If no games today, try next 30 days to find upcoming March Madness games
       if (res.success && res.players.length === 0) {
@@ -600,7 +600,7 @@ export default function App() {
           const nextDate = new Date();
           nextDate.setDate(nextDate.getDate() + i);
           const dateStr = nextDate.toISOString().slice(0, 10).replace(/-/g, "");
-          const nextRes = await apiFetch(`/today-players?date=${dateStr}`);
+          const nextRes = await apiFetch(`/games?date=${dateStr}`);
           if (nextRes.success && nextRes.players.length > 0) {
             // Found upcoming games — show players but mark them all as not locked
             const dateLabel = nextDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
