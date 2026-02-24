@@ -38,7 +38,11 @@ async function espnFetch(url) {
 // GET /api/games - Today's NBA games with all players
 app.get("/api/games", async (req, res) => {
   try {
-    const date = req.query.date || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const now = new Date();
+    // Use EST timezone (UTC-5) to match NBA schedule
+    const estOffset = -5 * 60;
+    const estDate = new Date(now.getTime() + (estOffset + now.getTimezoneOffset()) * 60000);
+    const date = req.query.date || estDate.toISOString().slice(0, 10).replace(/-/g, "");
     const url = `${ESPN_NBA}/scoreboard?dates=${date}&limit=20`;
     console.log(`[Games] Fetching: ${url}`);
     const data = await espnFetch(url);
