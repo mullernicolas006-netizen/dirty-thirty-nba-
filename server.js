@@ -217,5 +217,4 @@ app.get("/api/live-scores", async (req, res) => {
 
 app.get("/health", (req, res) => res.json({ status: "ok", service: "dirty-thirty-nba" }));
 
-app.listen(PORT, () => console.log(`Dirty Thirty NBA server running on port ${PORT}`));EOF
-grep -c "roster" ~/Desktop/dirty-thirty-nba/server.js
+app.listen(PORT, () => console.log(`Dirty Thirty NBA server running on port ${PORT}`));
