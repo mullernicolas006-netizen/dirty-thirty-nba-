@@ -246,6 +246,7 @@ function Header({ tab, setTab, user, liveCount }) {
           <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
             <span style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 22, color: C.accent }}>DIRTY</span>
             <span style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 22, background: `linear-gradient(90deg,${C.gold},${C.accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>THIRTY</span>
+            <span style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 16, color: C.accent, marginLeft: 6, border: `1px solid ${C.accent}`, borderRadius: 4, padding: "1px 6px" }}>NBA</span>
           </div>
           {liveCount > 0 && <span style={{ marginLeft: 4 }}><Badge label={`${liveCount} LIVE`} color={C.green} blink /></span>}
         </div>
