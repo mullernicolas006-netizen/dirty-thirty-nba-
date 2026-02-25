@@ -143,12 +143,20 @@ function LoginScreen({ onLogin }) {
     if (email.trim().toLowerCase() !== emailConfirm.trim().toLowerCase()) return setErr("Email addresses do not match");
     
     setLoading(true);
-    const id = `user_${email.replace(/[^a-z0-9]/gi, "_").toLowerCase()}`;
-    const user = { id, name: name.trim(), email: email.trim().toLowerCase(), joined: Date.now() };
-    
-    // Save to shared storage so admin can see all users
+    const emailLower = email.trim().toLowerCase();
+    const id = `user_${emailLower.replace(/[^a-z0-9]/gi, "_")}`;
+
+    // Check if email already registered by a different name
+    try {
+      const existing = await sbFetch(`users?id=eq.${encodeURIComponent(id)}&select=*`);
+      if (existing?.[0] && existing[0].name !== name.trim()) {
+        setLoading(false);
+        return setErr("This email is already registered. Please use a different email.");
+      }
+    } catch {}
+
+    const user = { id, name: name.trim(), email: emailLower, joined: Date.now() };
     await db.saveUser(user);
-    
     localStorage.setItem("d30_user", JSON.stringify(user));
     onLogin(user);
   }
@@ -294,7 +302,7 @@ function PlayerCard({ player, selected, onToggle, disabled }) {
 }
 
 // ── PICK SCREEN ───────────────────────────────────────────────────
-function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDate }) {
+function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDate, lockedIn, setLockedIn, savePicks }) {
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("ALL");
 
@@ -307,6 +315,7 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
   const filtered = players.filter(p => (teamFilter === "ALL" || p.team === teamFilter) && (!search || p.name.toLowerCase().includes(search.toLowerCase()) || p.team.toLowerCase().includes(search.toLowerCase())));
 
   function toggle(player) {
+    if (lockedIn) return;
     if (picks.some(p => p?.id === player.id)) { setPicks(prev => prev.map(p => p?.id === player.id ? null : p)); return; }
     const slot = picks.findIndex(p => p === null);
     if (slot === -1) return;
@@ -341,7 +350,7 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
                     <div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 3 }}>
                       <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>{pick.team}</span>
                       {pick.avgPoints !== null && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>⌀ {pick.avgPoints.toFixed(1)} ppg</span>}
-                      <button onClick={() => setPicks(prev => prev.map((p, idx) => idx === i ? null : p))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontFamily: "'JetBrains Mono'", fontSize: 9 }}>✕</button>
+                      {!lockedIn && <button onClick={() => setPicks(prev => prev.map((p, idx) => idx === i ? null : p))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontFamily: "'JetBrains Mono'", fontSize: 9 }}>✕</button>}
                     </div>
                   )}
                 </div>
@@ -355,6 +364,16 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: scoreColor, letterSpacing: 1, marginTop: 1 }}>
             {total !== null ? isBust ? "💥 BUST!" : total === 30 ? "🎯 PERFECT!" : `${30 - total} FROM 30` : "/ 30"}
           </div>
+          {bothPicked && !lockedIn && (
+            <button onClick={async () => { setLockedIn(true); await savePicks(true); }} style={{ marginTop: 10, padding: "9px 22px", background: C.accent, border: "none", borderRadius: 8, color: "#fff", fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 16, letterSpacing: 2, cursor: "pointer" }}>
+              🔒 LOCK IN
+            </button>
+          )}
+          {lockedIn && (
+            <div style={{ marginTop: 10, padding: "6px 16px", background: `${C.green}22`, border: `1px solid ${C.green}55`, borderRadius: 8, fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.green, letterSpacing: 1 }}>
+              ✅ LOCKED IN
+            </div>
+          )}
         </div>
       </div>
 
@@ -551,6 +570,7 @@ export default function App() {
   const [tab, setTab] = useState("pick");
   const [players, setPlayers] = useState([]);
   const [picks, setPicks] = useState([null, null]);
+  const [lockedIn, setLockedIn] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -587,6 +607,11 @@ export default function App() {
     savePicks();
     loadLeaderboard();
   }, [picks]);
+
+  useEffect(() => {
+    if (!user) return;
+    savePicks();
+  }, [lockedIn]);
 
   async function loadTodayPlayers() {
     setLoadingPlayers(true); setApiError(null);
@@ -658,9 +683,10 @@ export default function App() {
     } catch (e) { console.warn("Live update failed:", e.message); }
   }
 
-  async function savePicks() {
+  async function savePicks(overrideLocked) {
     if (!user) return;
-    await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, updated_at: Date.now() });
+    const isLocked = overrideLocked !== undefined ? overrideLocked : lockedIn;
+    await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, locked_in: isLocked, updated_at: Date.now() });
   }
 
   async function loadLeaderboard() {
@@ -707,7 +733,7 @@ export default function App() {
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
         <Header tab={tab} setTab={setTab} user={user} liveCount={liveCount} />
         <div style={{ flex: 1 }}>
-          {tab === "pick" && <PickScreen user={user} players={players} picks={picks} setPicks={setPicks} loading={loadingPlayers} error={apiError} nextGameDate={nextGameDate} />}
+          {tab === "pick" && <PickScreen user={user} players={players} picks={picks} setPicks={setPicks} loading={loadingPlayers} error={apiError} nextGameDate={nextGameDate} lockedIn={lockedIn} setLockedIn={setLockedIn} savePicks={savePicks} />}
           {tab === "leaderboard" && <LeaderboardScreen entries={leaderboard} userId={user.id} />}
           {tab === "results" && <ResultsScreen entries={leaderboard} />}
         </div>
