@@ -1,7 +1,5 @@
 /**
  * DIRTY THIRTY NBA - Backend Server
- * Fetches live NBA player data from ESPN API
- * Deploy on Render.com
  */
 
 const NBA_TEAM_IDS = {
@@ -18,8 +16,11 @@ const fetch = require("node-fetch");
 
 const app = express();
 const PORT = process.env.PORT || 3002;
-
 const ESPN_NBA = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
+
+// Daily avg points cache
+const avgCache = {};
+let avgCacheDate = "";
 
 app.use(cors());
 app.use(express.json());
@@ -30,19 +31,49 @@ async function espnFetch(url) {
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; DirtyThirtyNBA/1.0)",
-        "Accept": "application/json",
-      },
+      headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
     });
-    if (!res.ok) throw new Error(`ESPN returned ${res.status}`);
+    if (!res.ok) throw new Error(`ESPN ${res.status}`);
     return await res.json();
   } finally {
     clearTimeout(timeout);
   }
 }
 
-// GET /api/games - Today's NBA games with all players
+async function fetchAvgPoints(athleteId) {
+  try {
+    const data = await espnFetch(`https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${athleteId}/overview`);
+    const stats = data?.statistics;
+    if (!stats) return null;
+    const ptsIdx = stats.names?.indexOf("avgPoints") ?? -1;
+    if (ptsIdx < 0) return null;
+    const seasonRow = Array.isArray(stats.splits)
+      ? (stats.splits.find(s => s.displayName === "Regular Season") || stats.splits[0])
+      : null;
+    if (!seasonRow) return null;
+    const val = parseFloat(seasonRow.stats?.[ptsIdx]);
+    return isNaN(val) ? null : val;
+  } catch {
+    return null;
+  }
+}
+
+async function loadAvgCache(playerIds) {
+  const today = new Date().toISOString().slice(0, 10);
+  const uncached = playerIds.filter(id => !(id in avgCache));
+  if (uncached.length === 0) { avgCacheDate = today; return; }
+  console.log(`[AvgCache] Loading ${uncached.length} players...`);
+  for (let i = 0; i < uncached.length; i += 15) {
+    const batch = uncached.slice(i, i + 15);
+    await Promise.allSettled(batch.map(async id => {
+      avgCache[id] = await fetchAvgPoints(id);
+    }));
+  }
+  avgCacheDate = today;
+  const loaded = Object.values(avgCache).filter(v => v !== null).length;
+  console.log(`[AvgCache] Done. ${loaded}/${Object.keys(avgCache).length} with avg.`);
+}
+
 app.get("/api/games", async (req, res) => {
   try {
     const now = new Date();
@@ -77,64 +108,48 @@ app.get("/api/games", async (req, res) => {
       awayTeam: e.competitions?.[0]?.competitors?.find(c => c.homeAway === "away")?.team?.abbreviation,
     }));
 
-    const playerResults = await Promise.allSettled(
+    const summaryResults = await Promise.allSettled(
       events.map(e => espnFetch(`${ESPN_NBA}/summary?event=${e.id}`))
     );
 
     const players = [];
-    for (let i = 0; i < playerResults.length; i++) {
-      if (playerResults[i].status !== "fulfilled") continue;
-      const summary = playerResults[i].value;
+
+    for (let i = 0; i < summaryResults.length; i++) {
+      if (summaryResults[i].status !== "fulfilled") continue;
+      const summary = summaryResults[i].value;
       const event = games[i];
-      const fullEvent = events[i];
       const status = event.status;
       const isScheduled = status === "STATUS_SCHEDULED";
 
       if (isScheduled) {
-        const teams = [
-          { abbr: event.homeTeam },
-          { abbr: event.awayTeam }
-        ];
-        for (const t of teams) {
-          const teamAbbr = t.abbr;
+        for (const teamAbbr of [event.homeTeam, event.awayTeam]) {
           const teamId = NBA_TEAM_IDS[teamAbbr];
-          if (!teamId) {
-            console.warn(`No team ID for abbreviation: ${teamAbbr}`);
-            continue;
-          }
+          if (!teamId) { console.warn(`No ID for: ${teamAbbr}`); continue; }
           try {
             const rosterData = await espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/roster`);
-            const athleteList = rosterData.athletes || [];
             const teamName = rosterData.team?.displayName || teamAbbr;
-            console.log(`[Roster] ${teamAbbr} (${teamId}): ${athleteList.length} players`);
-            for (const a of athleteList) {
-              if (!a || !a.id) continue;
+            const athletes = rosterData.athletes || [];
+            console.log(`[Roster] ${teamAbbr} (${teamId}): ${athletes.length} players`);
+            for (const a of athletes) {
+              if (!a?.id) continue;
               const isOut = a.injuries?.some(inj => inj.status === "Out");
               if (isOut) continue;
               players.push({
-                id: a.id,
+                id: String(a.id),
                 name: a.displayName || a.fullName || a.shortName,
-                team: teamAbbr,
-                teamName,
+                team: teamAbbr, teamName,
                 position: a.position?.abbreviation || "",
-                points: null,
-                avgPoints: null,
-                status,
-                gameId: event.id,
-                gameName: event.shortName,
-                isStarter: false,
+                points: null, avgPoints: null,
+                status, gameId: event.id, gameName: event.shortName, isStarter: false,
               });
             }
-          } catch(e) {
-            console.warn(`Roster load failed for ${teamAbbr} (${teamId}):`, e.message);
-          }
+          } catch (e) { console.warn(`Roster failed for ${teamAbbr}:`, e.message); }
         }
         continue;
       }
 
-      // Live/finished: use box score
-      const boxPlayers = summary.boxscore?.players || [];
-      for (const teamData of boxPlayers) {
+      // Live/finished: box score
+      for (const teamData of summary.boxscore?.players || []) {
         const teamAbbr = teamData.team?.abbreviation || "";
         const teamName = teamData.team?.displayName || "";
         const statBlock = teamData.statistics?.[0];
@@ -146,20 +161,23 @@ app.get("/api/games", async (req, res) => {
           if (!a) continue;
           const pts = ptsIdx >= 0 ? parseInt(athlete.stats?.[ptsIdx]) || 0 : 0;
           players.push({
-            id: a.id,
+            id: String(a.id),
             name: a.displayName || a.fullName || a.shortName,
-            team: teamAbbr,
-            teamName,
+            team: teamAbbr, teamName,
             position: a.position?.abbreviation || "",
-            points: pts,
-            avgPoints: null,
-            status,
-            gameId: event.id,
-            gameName: event.shortName,
+            points: pts, avgPoints: null,
+            status, gameId: event.id, gameName: event.shortName,
             isStarter: athlete.starter === true,
           });
         }
       }
+    }
+
+    // Load avg points for all players
+    const allIds = [...new Set(players.map(p => p.id))];
+    await loadAvgCache(allIds);
+    for (const p of players) {
+      if (avgCache[p.id] != null) p.avgPoints = avgCache[p.id];
     }
 
     const starters = players.filter(p => p.isStarter);
@@ -174,16 +192,13 @@ app.get("/api/games", async (req, res) => {
   }
 });
 
-// GET /api/live-scores
 app.get("/api/live-scores", async (req, res) => {
   try {
     const gameIds = (req.query.games || "").split(",").filter(Boolean);
     if (gameIds.length === 0) return res.json({ success: true, players: [] });
-
     const results = await Promise.allSettled(
       gameIds.map(id => espnFetch(`${ESPN_NBA}/summary?event=${id}`))
     );
-
     const players = [];
     for (let i = 0; i < results.length; i++) {
       if (results[i].status !== "fulfilled") continue;
@@ -202,19 +217,16 @@ app.get("/api/live-scores", async (req, res) => {
           players.push({
             id: a.id,
             points: status === "STATUS_IN_PROGRESS" || status === "STATUS_FINAL" ? pts : null,
-            status,
-            gameId,
+            status, gameId,
           });
         }
       }
     }
     res.json({ success: true, players });
   } catch (err) {
-    console.error("[Live] Error:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 app.get("/health", (req, res) => res.json({ status: "ok", service: "dirty-thirty-nba" }));
-
 app.listen(PORT, () => console.log(`Dirty Thirty NBA server running on port ${PORT}`));
