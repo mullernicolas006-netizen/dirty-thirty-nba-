@@ -161,7 +161,7 @@ function LoginScreen({ onLogin }) {
           {/* Logo */}
           <div style={{ textAlign: "center", marginBottom: 40 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#033dff", display: "flex", alignItems: "center", justifyContent: "center" }}><img src={LOGO} alt="BeatM Logo" style={{ width: 38, height: 38, objectFit: "contain", filter: "brightness(0) invert(1)" }} /></div>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#ff3d00", display: "flex", alignItems: "center", justifyContent: "center" }}><img src={LOGO} alt="BeatM Logo" style={{ width: 38, height: 38, objectFit: "contain", filter: "brightness(0) invert(1)" }} /></div>
               <span style={{ fontFamily: "'Inter'", fontWeight: 600, fontSize: 15, color: "#eef0f4", letterSpacing: 0.5 }}>by BeatM</span>
             </div>
             <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 84, lineHeight: 0.88, letterSpacing: -1 }}>
@@ -223,7 +223,7 @@ function Footer() {
       background: C.bg,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#033dff", display: "flex", alignItems: "center", justifyContent: "center" }}><img src={LOGO} alt="BeatM" style={{ width: 16, height: 16, objectFit: "contain", filter: "brightness(0) invert(1)" }} /></div>
+        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#ff3d00", display: "flex", alignItems: "center", justifyContent: "center" }}><img src={LOGO} alt="BeatM" style={{ width: 16, height: 16, objectFit: "contain", filter: "brightness(0) invert(1)" }} /></div>
         <span style={{ fontFamily: "'JetBrains Mono'", fontWeight: 600, fontSize: 10, color: "#eef0f4", letterSpacing: 1 }}>by BeatM</span>
       </div>
       <span style={{ color: C.border }}>·</span>
@@ -242,7 +242,7 @@ function Header({ tab, setTab, user, liveCount }) {
     <header style={{ position: "sticky", top: 0, zIndex: 100, background: `${C.bg}f2`, backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#033dff", display: "flex", alignItems: "center", justifyContent: "center" }}><img src={LOGO} alt="BeatM" style={{ width: 22, height: 22, objectFit: "contain", filter: "brightness(0) invert(1)" }} /></div>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#ff3d00", display: "flex", alignItems: "center", justifyContent: "center" }}><img src={LOGO} alt="BeatM" style={{ width: 22, height: 22, objectFit: "contain", filter: "brightness(0) invert(1)" }} /></div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
             <span style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 22, color: C.accent }}>DIRTY</span>
             <span style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 22, background: `linear-gradient(90deg,${C.gold},${C.accent})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>THIRTY</span>
@@ -294,7 +294,7 @@ function PlayerCard({ player, selected, onToggle, disabled }) {
 }
 
 // ── PICK SCREEN ───────────────────────────────────────────────────
-function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDate, lockedIn, setLockedIn }) {
+function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDate }) {
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("ALL");
 
@@ -307,7 +307,6 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
   const filtered = players.filter(p => (teamFilter === "ALL" || p.team === teamFilter) && (!search || p.name.toLowerCase().includes(search.toLowerCase()) || p.team.toLowerCase().includes(search.toLowerCase())));
 
   function toggle(player) {
-    if (lockedIn) return;
     if (picks.some(p => p?.id === player.id)) { setPicks(prev => prev.map(p => p?.id === player.id ? null : p)); return; }
     const slot = picks.findIndex(p => p === null);
     if (slot === -1) return;
@@ -342,7 +341,7 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
                     <div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 3 }}>
                       <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>{pick.team}</span>
                       {pick.avgPoints !== null && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>⌀ {pick.avgPoints.toFixed(1)} ppg</span>}
-                      {!lockedIn && <button onClick={() => setPicks(prev => prev.map((p, idx) => idx === i ? null : p))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontFamily: "'JetBrains Mono'", fontSize: 9 }}>✕</button>}
+                      <button onClick={() => setPicks(prev => prev.map((p, idx) => idx === i ? null : p))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontFamily: "'JetBrains Mono'", fontSize: 9 }}>✕</button>
                     </div>
                   )}
                 </div>
@@ -356,16 +355,6 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: scoreColor, letterSpacing: 1, marginTop: 1 }}>
             {total !== null ? isBust ? "💥 BUST!" : total === 30 ? "🎯 PERFECT!" : `${30 - total} FROM 30` : "/ 30"}
           </div>
-          {bothPicked && !lockedIn && (
-            <button onClick={() => setLockedIn(true)} style={{ marginTop: 10, padding: "9px 22px", background: C.accent, border: "none", borderRadius: 8, color: "#fff", fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 16, letterSpacing: 2, cursor: "pointer" }}>
-              🔒 LOCK IN
-            </button>
-          )}
-          {lockedIn && (
-            <div style={{ marginTop: 10, padding: "6px 16px", background: `${C.green}22`, border: `1px solid ${C.green}55`, borderRadius: 8, fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.green, letterSpacing: 1 }}>
-              ✅ LOCKED IN
-            </div>
-          )}
         </div>
       </div>
 
@@ -562,7 +551,6 @@ export default function App() {
   const [tab, setTab] = useState("pick");
   const [players, setPlayers] = useState([]);
   const [picks, setPicks] = useState([null, null]);
-  const [lockedIn, setLockedIn] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -604,7 +592,7 @@ export default function App() {
     setLoadingPlayers(true); setApiError(null);
     try {
       // Try today first
-      let res = await apiFetch("/games");
+      let res = await apiFetch("/today-players");
       
       // If no games today, try next 30 days to find upcoming March Madness games
       if (res.success && res.players.length === 0) {
@@ -612,7 +600,7 @@ export default function App() {
           const nextDate = new Date();
           nextDate.setDate(nextDate.getDate() + i);
           const dateStr = nextDate.toISOString().slice(0, 10).replace(/-/g, "");
-          const nextRes = await apiFetch(`/games?date=${dateStr}`);
+          const nextRes = await apiFetch(`/today-players?date=${dateStr}`);
           if (nextRes.success && nextRes.players.length > 0) {
             // Found upcoming games — show players but mark them all as not locked
             const dateLabel = nextDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -672,7 +660,7 @@ export default function App() {
 
   async function savePicks() {
     if (!user) return;
-    await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, locked_in: lockedIn, updated_at: Date.now() });
+    await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, updated_at: Date.now() });
   }
 
   async function loadLeaderboard() {
@@ -719,7 +707,7 @@ export default function App() {
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
         <Header tab={tab} setTab={setTab} user={user} liveCount={liveCount} />
         <div style={{ flex: 1 }}>
-          {tab === "pick" && <PickScreen user={user} players={players} picks={picks} setPicks={setPicks} loading={loadingPlayers} error={apiError} nextGameDate={nextGameDate} lockedIn={lockedIn} setLockedIn={setLockedIn} />}
+          {tab === "pick" && <PickScreen user={user} players={players} picks={picks} setPicks={setPicks} loading={loadingPlayers} error={apiError} nextGameDate={nextGameDate} />}
           {tab === "leaderboard" && <LeaderboardScreen entries={leaderboard} userId={user.id} />}
           {tab === "results" && <ResultsScreen entries={leaderboard} />}
         </div>
