@@ -443,7 +443,7 @@ function LeaderboardScreen({ entries, userId }) {
             {entry.userName}{isMe && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginLeft: 7 }}>(YOU)</span>}
           </div>
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 3 }}>
-            {entry.p1Name ? `${entry.p1Name} (${entry.p1pts ?? "?"}) + ${entry.p2Name ?? "—"} (${entry.p2pts ?? "?"})` : <span style={{ fontStyle: "italic" }}>No picks yet</span>}
+            {entry.p1Name ? `${entry.p1Name} (${entry.p1pts ?? "?"}) + ${entry.p2Name ?? "—"} (${entry.p2pts ?? "?"})` : <span style={{ fontStyle: "italic" }}>{entry.lockedIn ? "🔒 Locked In" : "No picks yet"}</span>}
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -648,6 +648,7 @@ export default function App() {
           d.p1Id ? res.players.find(p => p.id === d.p1Id) || null : null,
           d.p2Id ? res.players.find(p => p.id === d.p2Id) || null : null,
         ]);
+        if (saved.locked_in) setLockedIn(true);
       }
       if (res.games.some(g => g.status === "STATUS_IN_PROGRESS")) await doLiveUpdate(res.players, gameIdsRef.current);
     } catch (e) { setApiError(e.message); }
@@ -703,6 +704,7 @@ export default function App() {
         userId: pick.user_id, userName: pick.user_name,
         p1Name: pick.p1_name, p2Name: pick.p2_name,
         p1pts, p2pts,
+        lockedIn: pick.locked_in || false,
         total: (p1pts !== null && p2pts !== null) ? p1pts + p2pts : null,
       };
     }
