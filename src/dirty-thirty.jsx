@@ -676,6 +676,7 @@ export default function App() {
         return { ...p, isLive: update.status === "STATUS_IN_PROGRESS", isOver: update.status === "STATUS_FINAL", isLocked: update.status !== "STATUS_SCHEDULED", points: update.points !== null ? update.points : p.points };
       }));
       setLiveCount(live);
+      if (live === 0) setTimeout(() => savePicks(), 500);
       setPicks(prev => prev.map(pick => {
         if (!pick) return null;
         const update = playerMap[pick.id]; if (!update) return pick;
