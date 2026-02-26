@@ -443,7 +443,7 @@ function LeaderboardScreen({ entries, userId }) {
             {entry.userName}{isMe && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginLeft: 7 }}>(YOU)</span>}
           </div>
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 3 }}>
-            {entry.p1Name ? `${entry.p1Name} (${entry.p1pts ?? "?"}) + ${entry.p2Name ?? "—"} (${entry.p2pts ?? "?"})` : <span style={{ fontStyle: "italic" }}>{entry.lockedIn ? "🔒 Locked In" : "No picks yet"}</span>}
+            {entry.p1Name ? `${entry.p1Name} (${entry.p1pts ?? "?"}) + ${entry.p2Name ?? "—"} (${entry.p2pts ?? "?"})${entry.lockedIn ? " 🔒" : ""}` : <span style={{ fontStyle: "italic" }}>{entry.lockedIn ? "🔒 LOCKED IN" : "No picks yet"}</span>}
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
