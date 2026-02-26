@@ -451,7 +451,7 @@ function LeaderboardScreen({ entries, userId }) {
             {entry.total ?? "—"}
           </div>
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, marginTop: 2, letterSpacing: 1 }}>
-            {isPerfect ? <span style={{ color: C.gold }}>🎯 PERFECT</span> : delta !== null ? <span style={{ color: C.green }}>{delta} FROM 30</span> : <span style={{ color: C.green }}>{entry.lockedIn ? '🔒 LOCKED IN' : 'NO PICKS'}</span>}
+            {isPerfect ? <span style={{ color: C.gold }}>🎯 PERFECT</span> : delta !== null ? <span style={{ color: C.green }}>{delta} FROM 30</span> : <span style={{ color: entry.lockedIn ? C.green : C.red }}>{entry.lockedIn ? '🔒 LOCKED IN' : 'NO PICKS'}</span>}
           </div>
         </div>
       </div>
