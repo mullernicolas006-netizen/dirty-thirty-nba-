@@ -670,14 +670,15 @@ export default function App() {
         playerMap[p.id] = p;
       }
       let live = 0;
-      setPlayers(prev => prev.map(p => {
+      const updatedPlayers = currentPlayers.map(p => {
         const update = playerMap[p.id]; if (!update) return p;
         if (update.status === "STATUS_IN_PROGRESS") live++;
         return { ...p, isLive: update.status === "STATUS_IN_PROGRESS", isOver: update.status === "STATUS_FINAL", isLocked: update.status !== "STATUS_SCHEDULED", points: update.points !== null ? update.points : p.points };
-      }));
+      });
+      setPlayers(updatedPlayers);
       setLiveCount(live);
       if (live === 0) setTimeout(() => savePicks(), 500);
-      setTimeout(() => loadLeaderboard(), 600);
+      loadLeaderboard(prev);
       setPicks(prev => prev.map(pick => {
         if (!pick) return null;
         const update = playerMap[pick.id]; if (!update) return pick;
@@ -692,7 +693,8 @@ export default function App() {
     await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, locked_in: isLocked, updated_at: Date.now() });
   }
 
-  async function loadLeaderboard() {
+  async function loadLeaderboard(currentPlayers) {
+    const livePlayers = currentPlayers || players;
     const dateKey = todayStr();
     const entries = [];
 
@@ -700,7 +702,7 @@ export default function App() {
     const todayPicks = await db.getAllPicksForDate(dateKey);
     const pickMap = {};
     for (const pick of todayPicks) {
-      const p1 = players.find(p => p.id === pick.p1_id), p2 = players.find(p => p.id === pick.p2_id);
+      const p1 = livePlayers.find(p => p.id === pick.p1_id), p2 = livePlayers.find(p => p.id === pick.p2_id);
       const p1pts = p1?.points ?? pick.p1_pts ?? null, p2pts = p2?.points ?? pick.p2_pts ?? null;
       pickMap[pick.user_id] = {
         userId: pick.user_id, userName: pick.user_name,
