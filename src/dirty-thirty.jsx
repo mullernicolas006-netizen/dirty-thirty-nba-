@@ -578,7 +578,6 @@ export default function App() {
   const [nextGameDate, setNextGameDate] = useState(null);
   const gameIdsRef = useRef([]);
   const playersRef = useRef([]);
-  const playersRef = useRef([]);
 
   useEffect(() => {
     const saved = localStorage.getItem("d30_user");
