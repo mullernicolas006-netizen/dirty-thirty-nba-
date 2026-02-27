@@ -677,6 +677,7 @@ export default function App() {
       }));
       setLiveCount(live);
       if (live === 0) setTimeout(() => savePicks(), 500);
+      setTimeout(() => loadLeaderboard(), 600);
       setPicks(prev => prev.map(pick => {
         if (!pick) return null;
         const update = playerMap[pick.id]; if (!update) return pick;
