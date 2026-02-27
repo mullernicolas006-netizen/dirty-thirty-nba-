@@ -577,6 +577,8 @@ export default function App() {
   const [liveCount, setLiveCount] = useState(0);
   const [nextGameDate, setNextGameDate] = useState(null);
   const gameIdsRef = useRef([]);
+  const playersRef = useRef([]);
+  const playersRef = useRef([]);
 
   useEffect(() => {
     const saved = localStorage.getItem("d30_user");
@@ -640,6 +642,8 @@ export default function App() {
       gameIdsRef.current = res.games.map(g => g.id);
       setLiveCount(res.games.filter(g => g.status === "STATUS_IN_PROGRESS").length);
       setPlayers(res.players);
+      playersRef.current = res.players;
+      playersRef.current = res.players;
 
       const saved = await db.getPick(user.id, todayStr());
       if (saved) {
@@ -676,6 +680,8 @@ export default function App() {
         return { ...p, isLive: update.status === "STATUS_IN_PROGRESS", isOver: update.status === "STATUS_FINAL", isLocked: update.status !== "STATUS_SCHEDULED", points: update.points !== null ? update.points : p.points };
       });
       setPlayers(updatedPlayers);
+      playersRef.current = updatedPlayers;
+      playersRef.current = updatedPlayers;
       setLiveCount(live);
       if (live === 0) setTimeout(() => savePicks(), 500);
       loadLeaderboard(updatedPlayers);
@@ -694,7 +700,7 @@ export default function App() {
   }
 
   async function loadLeaderboard(currentPlayers) {
-    const livePlayers = currentPlayers || players;
+    const livePlayers = currentPlayers || playersRef.current || [];
     const dateKey = todayStr();
     const entries = [];
 
