@@ -521,45 +521,94 @@ function LeaderboardScreen({ entries, userId }) {
 }
 
 // ── RESULTS ───────────────────────────────────────────────────────
-function ResultsScreen({ entries }) {
-  const finished = entries.filter(e => e.total !== null);
-  const ranked = rankEntries(finished);
-  const winner = ranked.find(e => e.total !== null && e.total <= 30);
+function ResultsScreen({ userId }) {
+  const [dates, setDates] = useState([]);
+  const [selDate, setSelDate] = useState(null);
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const rows = await sbFetch("picks?select=date&order=date.desc");
+        const unique = [...new Set((rows||[]).map(r=>r.date))];
+        setDates(unique);
+        if (unique.length > 0) setSelDate(unique[0]);
+        else setLoading(false);
+      } catch { setLoading(false); }
+    }
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!selDate) return;
+    async function load() {
+      setLoading(true);
+      try {
+        const picks = await sbFetch(`picks?date=eq.${selDate}&select=*`);
+        const users = await sbFetch("users?select=*&order=joined.asc") || [];
+        const map = {};
+        for (const p of picks||[]) {
+          map[p.user_id] = { userId: p.user_id, userName: p.user_name, p1Name: p.p1_name, p2Name: p.p2_name, p1pts: p.p1_pts, p2pts: p.p2_pts, total: (p.p1_pts!==null&&p.p2_pts!==null)?p.p1_pts+p.p2_pts:null };
+        }
+        const result = users.map(u => map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null });
+        setEntries(result);
+      } catch {}
+      setLoading(false);
+    }
+    load();
+  }, [selDate]);
+
+  const ranked = rankEntries(entries.filter(e=>e.total!==null));
+  const noPicks = entries.filter(e=>e.total===null);
+  const winner = ranked.find(e=>e.total!==null&&e.total<=30);
+  const isToday = selDate === todayStr();
+
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 20px" }}>
-      <div className="fu" style={{ marginBottom: 24 }}>
+      <div className="fu" style={{ marginBottom: 24, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
         <h1 style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 38, letterSpacing: 1 }}>FINAL <span style={{ color: C.gold }}>RESULTS</span></h1>
+        {dates.length > 0 && (
+          <select value={selDate||""} onChange={e=>setSelDate(e.target.value)}
+            style={{ padding:"7px 14px", background:C.card, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, fontFamily:"'JetBrains Mono'", fontSize:11, cursor:"pointer" }}>
+            {dates.map(d=><option key={d} value={d}>{d===todayStr()?'TODAY ('+d+')':d}</option>)}
+          </select>
+        )}
       </div>
-      {winner ? (
-        <div className="fu" style={{ background: C.goldDim, border: `1px solid ${C.gold}44`, borderRadius: 14, padding: 30, textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: 52, marginBottom: 6 }}>🏆</div>
-          <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 48, color: C.gold, letterSpacing: 3 }}>{winner.userName}</div>
-          <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 11, color: C.muted, marginTop: 8 }}>{winner.p1Name} ({winner.p1pts}) + {winner.p2Name} ({winner.p2pts}) = <span style={{ color: C.gold }}>{winner.total} Points</span></div>
-          <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 11, color: C.gold, marginTop: 5, letterSpacing: 1 }}>{winner.total === 30 ? "🎯 PERFECT DIRTY THIRTY!" : `JUST ${30 - winner.total} POINTS FROM DIRTY THIRTY`}</div>
-        </div>
-      ) : (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 40, textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 11, color: C.muted }}>GAMES NOT FINISHED YET — RESULTS COMING SOON</div>
-        </div>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {ranked.map((entry, idx) => {
-          const isBust = entry.total > 30, isPerfect = entry.total === 30;
-          return (
-            <div key={entry.userId} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "13px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 34, textAlign: "center" }}>{idx === 0 && !isBust ? <span style={{ fontSize: 19 }}>🥇</span> : <span style={{ fontFamily: "'Barlow Condensed'", fontWeight: 700, fontSize: 17, color: C.muted }}>#{idx+1}</span>}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "'Inter'", fontWeight: 600, fontSize: 14 }}>{entry.userName}</div>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 3 }}>{entry.p1Name} ({entry.p1pts}) + {entry.p2Name} ({entry.p2pts})</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 28, color: isBust ? C.red : isPerfect ? C.gold : C.green }}>{entry.total}</div>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: isBust ? C.red : C.muted }}>{isBust ? "💥 BUST" : isPerfect ? "🎯 PERFECT" : `${30 - entry.total} FROM 30`}</div>
-              </div>
+      {loading ? <div style={{display:"flex",justifyContent:"center",padding:80}}><Spinner size={32}/></div> : (
+        <>
+          {winner ? (
+            <div className="fu" style={{ background:C.goldDim, border:`1px solid ${C.gold}44`, borderRadius:14, padding:30, textAlign:"center", marginBottom:24 }}>
+              <div style={{fontSize:52,marginBottom:6}}>🏆</div>
+              <div style={{fontFamily:"'Barlow Condensed'",fontWeight:900,fontSize:48,color:C.gold,letterSpacing:3}}>{winner.userName}</div>
+              <div style={{fontFamily:"'JetBrains Mono'",fontSize:11,color:C.muted,marginTop:8}}>{winner.p1Name} ({winner.p1pts}) + {winner.p2Name} ({winner.p2pts}) = <span style={{color:C.gold}}>{winner.total} Points</span></div>
+              <div style={{fontFamily:"'JetBrains Mono'",fontSize:11,color:C.gold,marginTop:5,letterSpacing:1}}>{winner.total===30?"🎯 PERFECT DIRTY THIRTY!":`JUST ${30-winner.total} POINTS FROM DIRTY THIRTY`}</div>
             </div>
-          );
-        })}
-      </div>
+          ) : (
+            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:40,textAlign:"center",marginBottom:24}}>
+              <div style={{fontFamily:"'JetBrains Mono'",fontSize:11,color:C.muted}}>{isToday?"GAMES NOT FINISHED YET — RESULTS COMING SOON":"NO RESULTS FOR THIS DATE"}</div>
+            </div>
+          )}
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[...ranked,...noPicks].map((entry,idx)=>{
+              const isBust=entry.total!==null&&entry.total>30, isPerfect=entry.total===30, isMe=entry.userId===userId;
+              return (
+                <div key={entry.userId} style={{background:isMe?C.accentDim:C.card,border:`1px solid ${isMe?C.accent:C.border}`,borderRadius:10,padding:"13px 18px",display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{width:34,textAlign:"center"}}>{idx===0&&!isBust&&entry.total!==null?<span style={{fontSize:19}}>🥇</span>:<span style={{fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:17,color:C.muted}}>#{idx+1}</span>}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"'Inter'",fontWeight:600,fontSize:14,color:isMe?C.accent:C.text}}>{entry.userName}{isMe&&<span style={{fontFamily:"'JetBrains Mono'",fontSize:9,color:C.muted,marginLeft:7}}>(YOU)</span>}</div>
+                    <div style={{fontFamily:"'JetBrains Mono'",fontSize:9,color:C.muted,marginTop:3}}>{entry.p1Name?`${entry.p1Name} (${entry.p1pts??'?'}) + ${entry.p2Name} (${entry.p2pts??'?'})`:"No picks"}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontFamily:"'Barlow Condensed'",fontWeight:800,fontSize:28,color:isBust?C.red:isPerfect?C.gold:entry.total!==null?C.green:C.muted}}>{entry.total??'—'}</div>
+                    <div style={{fontFamily:"'JetBrains Mono'",fontSize:9,color:isBust?C.red:C.muted}}>{isBust?"💥 BUST":isPerfect?"🎯 PERFECT":entry.total!==null?`${30-entry.total} FROM 30`:"NO PICKS"}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -746,7 +795,7 @@ export default function App() {
         <div style={{ flex: 1 }}>
           {tab === "pick" && <PickScreen user={user} players={players} picks={picks} setPicks={setPicks} loading={loadingPlayers} error={apiError} nextGameDate={nextGameDate} lockedIn={lockedIn} setLockedIn={setLockedIn} savePicks={savePicks} />}
           {tab === "leaderboard" && <LeaderboardScreen entries={leaderboard} userId={user.id} />}
-          {tab === "results" && <ResultsScreen entries={leaderboard} />}
+          {tab === "results" && <ResultsScreen userId={user.id} />}
         </div>
         <Footer />
       </div>
