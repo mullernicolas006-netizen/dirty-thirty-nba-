@@ -180,8 +180,7 @@ app.get("/api/games", async (req, res) => {
       if (avgCache[p.id] != null) p.avgPoints = avgCache[p.id];
     }
 
-    const starters = players.filter(p => p.isStarter);
-    const finalPlayers = starters.length > 0 ? starters : players;
+    const finalPlayers = players;
 
     console.log(`[Games] ${games.length} games, ${finalPlayers.length} players`);
     res.json({ success: true, games, players: finalPlayers, nextGameDate: null });
