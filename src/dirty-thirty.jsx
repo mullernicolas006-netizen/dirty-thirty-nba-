@@ -696,9 +696,11 @@ export default function App() {
       const saved = await db.getPick(user.id, todayStr());
       if (saved) {
         const d = { p1Id: saved.p1_id, p1Name: saved.p1_name, p2Id: saved.p2_id, p2Name: saved.p2_name };
+        const p1Player = res.players.find(p => p.id === d.p1Id);
+        const p2Player = res.players.find(p => p.id === d.p2Id);
         setPicks([
-          d.p1Id ? res.players.find(p => p.id === d.p1Id) || null : null,
-          d.p2Id ? res.players.find(p => p.id === d.p2Id) || null : null,
+          d.p1Id ? (p1Player || { id: d.p1Id, name: d.p1Name, points: saved.p1_pts, avgPoints: null, team: '', position: '', gameName: '', isLive: false, isOver: false, isLocked: false }) : null,
+          d.p2Id ? (p2Player || { id: d.p2Id, name: d.p2Name, points: saved.p2_pts, avgPoints: null, team: '', position: '', gameName: '', isLive: false, isOver: false, isLocked: false }) : null,
         ]);
         if (saved.locked_in) setLockedIn(true);
       }
