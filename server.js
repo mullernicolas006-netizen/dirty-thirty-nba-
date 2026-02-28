@@ -227,5 +227,66 @@ app.get("/api/live-scores", async (req, res) => {
   }
 });
 
+
+// ── SERVER-SIDE PICK UPDATER ─────────────────────────────────────
+const SUPABASE_URL = "https://ygykuhcwpfltfgehvphg.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlneWt1aGN3cGZsdGZnZWh2cGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Nzc3OTIsImV4cCI6MjA4NzQ1Mzc5Mn0.4yMdYVvYSP6qUZmgFoaQlBzxnrT59ulKb1oJXEIFhsg";
+
+async function sbFetch(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=representation", ...options.headers },
+  });
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function todayStr() {
+  const now = new Date();
+  const est = new Date(now.getTime() + (-5 * 60 + now.getTimezoneOffset()) * 60000 - 6 * 60 * 60 * 1000);
+  return est.toISOString().slice(0, 10);
+}
+
+async function updateAllPicksWithLiveScores() {
+  try {
+    const date = todayStr();
+    const picks = await sbFetch(`picks?date=eq.${date}&select=*`);
+    if (!picks || picks.length === 0) return;
+    const now = new Date();
+    const estDate = new Date(now.getTime() + (-5 * 60 + now.getTimezoneOffset()) * 60000);
+    const dateStr = estDate.toISOString().slice(0, 10).replace(/-/g, "");
+    const scoreData = await espnFetch(`${ESPN_NBA}/scoreboard?dates=${dateStr}&limit=20`);
+    const events = scoreData.events || [];
+    const activeGames = events.filter(e => e.status?.type?.name === "STATUS_IN_PROGRESS" || e.status?.type?.name === "STATUS_FINAL");
+    if (activeGames.length === 0) return;
+    const playerPoints = {};
+    const summaries = await Promise.allSettled(activeGames.map(e => espnFetch(`${ESPN_NBA}/summary?event=${e.id}`)));
+    for (const result of summaries) {
+      if (result.status !== "fulfilled") continue;
+      const summary = result.value;
+      for (const teamData of summary.boxscore?.players || []) {
+        const statBlock = teamData.statistics?.[0];
+        if (!statBlock) continue;
+        const ptsIdx = (statBlock.labels || []).indexOf("PTS");
+        for (const athlete of statBlock.athletes || []) {
+          const a = athlete.athlete;
+          if (!a) continue;
+          playerPoints[String(a.id)] = ptsIdx >= 0 ? parseInt(athlete.stats?.[ptsIdx]) || 0 : 0;
+        }
+      }
+    }
+    for (const pick of picks) {
+      const p1pts = pick.p1_id && playerPoints[pick.p1_id] !== undefined ? playerPoints[pick.p1_id] : pick.p1_pts;
+      const p2pts = pick.p2_id && playerPoints[pick.p2_id] !== undefined ? playerPoints[pick.p2_id] : pick.p2_pts;
+      if (p1pts === pick.p1_pts && p2pts === pick.p2_pts) continue;
+      await sbFetch(`picks?id=eq.${encodeURIComponent(pick.id)}`, { method: "PATCH", body: JSON.stringify({ p1_pts: p1pts, p2_pts: p2pts, updated_at: Date.now() }) });
+    }
+    console.log(`[PickUpdater] Updated ${picks.length} picks`);
+  } catch (e) { console.warn("[PickUpdater] Error:", e.message); }
+}
+
+setInterval(updateAllPicksWithLiveScores, 30000);
+console.log("[PickUpdater] Started");
+
 app.get("/health", (req, res) => res.json({ status: "ok", service: "dirty-thirty-nba" }));
 app.listen(PORT, () => console.log(`Dirty Thirty NBA server running on port ${PORT}`));
