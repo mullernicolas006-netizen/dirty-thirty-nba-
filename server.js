@@ -74,6 +74,20 @@ async function loadAvgCache(playerIds) {
   console.log(`[AvgCache] Done. ${loaded}/${Object.keys(avgCache).length} with avg.`);
 }
 
+async function getInjuredPlayerIds(teamId) {
+  try {
+    const data = await espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/injuries`);
+    const injured = new Set();
+    for (const inj of data?.injuries || []) {
+      const status = inj?.type?.description?.toLowerCase() || "";
+      if (status.includes("out") || status.includes("doubtful")) {
+        if (inj?.athlete?.id) injured.add(String(inj.athlete.id));
+      }
+    }
+    return injured;
+  } catch { return new Set(); }
+}
+
 app.get("/api/games", async (req, res) => {
   try {
     const now = new Date();
@@ -126,14 +140,14 @@ app.get("/api/games", async (req, res) => {
           const teamId = NBA_TEAM_IDS[teamAbbr];
           if (!teamId) { console.warn(`No ID for: ${teamAbbr}`); continue; }
           try {
-            const rosterData = await espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/roster`);
+            const [rosterData, injuredIds] = await Promise.all([
+              espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/roster`),
+              getInjuredPlayerIds(teamId),
+            ]);
             const teamName = rosterData.team?.displayName || teamAbbr;
             const athletes = rosterData.athletes || [];
-            console.log(`[Roster] ${teamAbbr} (${teamId}): ${athletes.length} players`);
-            for (const a of athletes) {
-              if (!a?.id) continue;
-              const isOut = a.injuries?.some(inj => inj.status === "Out");
-              if (isOut) continue;
+            const healthy = athletes.filter(a => a?.id && !injuredIds.has(String(a.id)));
+            for (const a of healthy) {
               players.push({
                 id: String(a.id),
                 name: a.displayName || a.fullName || a.shortName,
@@ -143,6 +157,7 @@ app.get("/api/games", async (req, res) => {
                 status, gameId: event.id, gameName: event.shortName, isStarter: false,
               });
             }
+            console.log(`[Roster] ${teamAbbr}: ${healthy.length} healthy players`);
           } catch (e) { console.warn(`Roster failed for ${teamAbbr}:`, e.message); }
         }
         continue;
@@ -180,7 +195,21 @@ app.get("/api/games", async (req, res) => {
       if (avgCache[p.id] != null) p.avgPoints = avgCache[p.id];
     }
 
-    const finalPlayers = players;
+    const teamGroups = {};
+    for (const p of players) {
+      if (!teamGroups[p.team]) teamGroups[p.team] = [];
+      teamGroups[p.team].push(p);
+    }
+    const finalPlayers = [];
+    for (const [team, teamPlayers] of Object.entries(teamGroups)) {
+      const isScheduled = teamPlayers[0]?.status === "STATUS_SCHEDULED";
+      if (isScheduled) {
+        const sorted = [...teamPlayers].sort((a, b) => (b.avgPoints || 0) - (a.avgPoints || 0));
+        finalPlayers.push(...sorted.slice(0, 7));
+      } else {
+        finalPlayers.push(...teamPlayers);
+      }
+    }
 
     console.log(`[Games] ${games.length} games, ${finalPlayers.length} players`);
     res.json({ success: true, games, players: finalPlayers, nextGameDate: null });
@@ -243,7 +272,7 @@ async function sbFetch(path, options = {}) {
 
 function todayStr() {
   const now = new Date();
-  const est = new Date(now.getTime() + (-5 * 60 + now.getTimezoneOffset()) * 60000 - 6 * 60 * 60 * 1000);
+  const est = new Date(now.getTime() + (-5 * 60 + now.getTimezoneOffset()) * 60000);
   return est.toISOString().slice(0, 10);
 }
 
