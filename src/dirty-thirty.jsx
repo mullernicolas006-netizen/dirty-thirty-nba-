@@ -82,7 +82,7 @@ async function apiFetch(path) {
   return res.json();
 }
 
-function todayStr() { const now = new Date(); const est = new Date(now.getTime() + (-5 * 60 + now.getTimezoneOffset()) * 60000 - 6 * 60 * 60 * 1000); return est.toISOString().slice(0, 10); }
+function todayStr() { const now = new Date(); const est = new Date(now.getTime() + (-5 * 60 + now.getTimezoneOffset()) * 60000); return est.toISOString().slice(0, 10); }
 function scoreDelta(score) { if (score === null || score > 30) return null; return 30 - score; }
 function rankEntries(entries) {
   const valid = entries.filter(e => e.total !== null && e.total <= 30);
