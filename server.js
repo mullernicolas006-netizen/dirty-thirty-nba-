@@ -233,7 +233,7 @@ const SUPABASE_URL = "https://ygykuhcwpfltfgehvphg.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlneWt1aGN3cGZsdGZnZWh2cGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Nzc3OTIsImV4cCI6MjA4NzQ1Mzc5Mn0.4yMdYVvYSP6qUZmgFoaQlBzxnrT59ulKb1oJXEIFhsg";
 
 async function sbFetch(path, options = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const res = await require("node-fetch")(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
     headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=representation", ...options.headers },
   });
