@@ -655,8 +655,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     if (picks[0] === null && picks[1] === null) return;
-    savePicks();
-    loadLeaderboard();
+    if (!lockedIn) { savePicks(); loadLeaderboard(); }
   }, [picks]);
 
   useEffect(() => {
