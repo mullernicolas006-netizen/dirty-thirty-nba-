@@ -695,7 +695,7 @@ export default function App() {
       playersRef.current = res.players;
 
       const saved = await db.getPick(user.id, todayStr());
-      if (saved) {
+      if (saved && saved.date === todayStr()) {
         const d = { p1Id: saved.p1_id, p1Name: saved.p1_name, p2Id: saved.p2_id, p2Name: saved.p2_name };
         const p1Player = res.players.find(p => p.id === d.p1Id);
         const p2Player = res.players.find(p => p.id === d.p2Id);
@@ -704,6 +704,9 @@ export default function App() {
           d.p2Id ? (p2Player || { id: d.p2Id, name: d.p2Name, points: saved.p2_pts, avgPoints: null, team: '', position: '', gameName: '', isLive: false, isOver: false, isLocked: false }) : null,
         ]);
         if (saved.locked_in) setLockedIn(true);
+      } else {
+        setPicks([null, null]);
+        setLockedIn(false);
       }
       if (res.games.some(g => g.status === "STATUS_IN_PROGRESS")) await doLiveUpdate(res.players, gameIdsRef.current);
     } catch (e) { setApiError(e.message); }
