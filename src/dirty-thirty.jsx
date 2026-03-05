@@ -181,9 +181,9 @@ function LoginScreen({ onLogin }) {
 
           <div style={{ background: C.goldDim, border: `1px solid ${C.gold}33`, borderRadius: 10, padding: "13px 18px", marginBottom: 20 }}>
             <p style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.gold, lineHeight: 1.9, letterSpacing: 0.3 }}>
-              🏀 Pick 2 NBA Players · Combined Points = 30<br/>
-              🎯 Closest to 30 wins<br/>
-              💥 Over 30 = Bust → you lose
+              🏀 Pick 2+ NBA Players from different teams<br/>
+              📊 Combined Points = your score<br/>
+              🎯 Closest to 30 wins · 💥 Over 30 = Bust
             </p>
           </div>
 
@@ -307,19 +307,20 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
   const [teamFilter, setTeamFilter] = useState("ALL");
 
   const pick1 = picks[0], pick2 = picks[1];
-  const bothPicked = pick1 && pick2;
-  const p1pts = pick1?.points ?? null; const p2pts = pick2?.points ?? null; const anyLive = pick1?.isLive || pick2?.isLive || pick1?.isOver || pick2?.isOver; const total = bothPicked && anyLive ? (p1pts ?? 0) + (p2pts ?? 0) : (p1pts !== null && p2pts !== null ? p1pts + p2pts : null);
+  const bothPicked = picks.length >= 2 && new Set(picks.map(p => p?.team)).size >= 2;
+  const anyLive = picks.some(p => p?.isLive || p?.isOver); const allHavePoints = picks.length >= 2 && picks.every(p => p?.points !== null); const total = picks.length >= 2 && (anyLive || allHavePoints) ? picks.reduce((sum, p) => sum + (p?.points ?? 0), 0) : null;
   const isBust = total !== null && total > 30;
-  const isLive = pick1?.isLive || pick2?.isLive;
+  const isLive = picks.some(p => p?.isLive);
   const teams = ["ALL", ...new Set(players.map(p => p.team).filter(Boolean).sort())];
   const filtered = players.filter(p => (teamFilter === "ALL" || p.team === teamFilter) && (!search || p.name.toLowerCase().includes(search.toLowerCase()) || p.team.toLowerCase().includes(search.toLowerCase())));
 
   function toggle(player) {
     if (lockedIn) return;
-    if (picks.some(p => p?.id === player.id)) { setPicks(prev => prev.map(p => p?.id === player.id ? null : p)); return; }
-    const slot = picks.findIndex(p => p === null);
-    if (slot === -1) return;
-    const next = [...picks]; next[slot] = player; setPicks(next);
+    if (picks.some(p => p?.id === player.id)) {
+      setPicks(prev => prev.filter(p => p?.id !== player.id));
+      return;
+    }
+    setPicks(prev => [...prev, player]);
   }
 
   const scoreColor = total === null ? C.muted : isBust ? C.red : total === 30 ? C.gold : C.green;
@@ -336,27 +337,17 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
 
       {/* Score card */}
       <div className="fu" style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 22px", marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 18, alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-          {[0, 1].map(i => {
-            const pick = picks[i];
-            return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <div style={{ width: 46, height: 46, borderRadius: 10, border: `2px ${pick ? "solid" : "dashed"} ${pick ? C.accent : C.border}`, background: pick ? C.accentDim : "transparent", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {pick?.headshot ? <img src={pick.headshot} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.style.display = "none"} /> : <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: pick ? C.accent : C.muted }}>P{i + 1}</span>}
-                </div>
-                <div>
-                  <div style={{ fontFamily: "'Inter'", fontWeight: 600, fontSize: 13, color: pick ? C.text : C.muted }}>{pick ? pick.name : "— Not selected"}</div>
-                  {pick && (
-                    <div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 3 }}>
-                      <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>{pick.team}</span>
-                      {pick.avgPoints !== null && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>⌀ {pick.avgPoints.toFixed(1)} ppg</span>}
-                      {!lockedIn && <button onClick={() => setPicks(prev => prev.map((p, idx) => idx === i ? null : p))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontFamily: "'JetBrains Mono'", fontSize: 9 }}>✕</button>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", flex: 1 }}>
+          {picks.length === 0 && <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.muted }}>— No players selected</div>}
+          {picks.map((pick, i) => (
+            <div key={pick.id} style={{ display: "flex", alignItems: "center", gap: 8, background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: "6px 10px" }}>
+              <div style={{ fontFamily: "'Inter'", fontWeight: 600, fontSize: 12, color: C.text }}>{pick.name}</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>{pick.team}</div>
+              {pick.points !== null && <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 16, color: C.gold }}>{pick.points}</div>}
+              {!lockedIn && <button onClick={() => setPicks(prev => prev.filter(p => p.id !== pick.id))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 11, lineHeight: 1 }}>✕</button>}
+            </div>
+          ))}
+          {!lockedIn && picks.length >= 1 && <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, alignSelf: "center" }}>+ select more</div>}
         </div>
         <div style={{ textAlign: "center" }}>
           {isLive && <Badge label="LIVE" color={C.green} blink />}
@@ -399,7 +390,7 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(285px, 1fr))", gap: 7 }}>
           {filtered.map((p, i) => (
             <div key={p.id} className="fu" style={{ animationDelay: `${i * 0.018}s` }}>
-              <PlayerCard player={p} selected={picks.some(pp => pp?.id === p.id)} onToggle={toggle} disabled={picks.filter(Boolean).length >= 2} />
+              <PlayerCard player={p} selected={picks.some(pp => pp?.id === p.id)} onToggle={toggle} disabled={false} />
             </div>
           ))}
           {filtered.length === 0 && !loading && (
@@ -443,7 +434,7 @@ function LeaderboardScreen({ entries, userId }) {
             {entry.userName}{isMe && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginLeft: 7 }}>(YOU)</span>}
           </div>
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 3 }}>
-            {entry.p1Name ? `${entry.p1Name} (${entry.p1pts ?? "?"}) + ${entry.p2Name ?? "—"} (${entry.p2pts ?? "?"})${entry.lockedIn ? " 🔒" : ""}` : <span style={{ fontStyle: "italic" }}>{entry.lockedIn ? "🔒 LOCKED IN" : "No picks yet"}</span>}
+            {entry.p1Name ? `${entry.picksDisplay || (entry.p1Name ? entry.p1Name + " + " + (entry.p2Name || "—") : "")}${entry.lockedIn ? " 🔒" : ""}` : <span style={{ fontStyle: "italic" }}>{entry.lockedIn ? "🔒 LOCKED IN" : "No picks yet"}</span>}
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -618,7 +609,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("pick");
   const [players, setPlayers] = useState([]);
-  const [picks, setPicks] = useState([null, null]);
+  const [picks, setPicks] = useState([]);
   const [lockedIn, setLockedIn] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
@@ -654,7 +645,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    if (picks[0] === null && picks[1] === null) return;
+    if (picks.length === 0) return;
     if (!lockedIn) { savePicks(); loadLeaderboard(); }
   }, [picks]);
 
@@ -695,16 +686,22 @@ export default function App() {
 
       const saved = await db.getPick(user.id, todayStr());
       if (saved && saved.date === todayStr()) {
-        const d = { p1Id: saved.p1_id, p1Name: saved.p1_name, p2Id: saved.p2_id, p2Name: saved.p2_name };
-        const p1Player = res.players.find(p => p.id === d.p1Id);
-        const p2Player = res.players.find(p => p.id === d.p2Id);
-        setPicks([
-          d.p1Id ? (p1Player || { id: d.p1Id, name: d.p1Name, points: saved.p1_pts, avgPoints: null, team: '', position: '', gameName: '', isLive: false, isOver: false, isLocked: false }) : null,
-          d.p2Id ? (p2Player || { id: d.p2Id, name: d.p2Name, points: saved.p2_pts, avgPoints: null, team: '', position: '', gameName: '', isLive: false, isOver: false, isLocked: false }) : null,
-        ]);
+        let restoredPicks = [];
+        if (saved.picks_json) {
+          try {
+            const parsed = JSON.parse(saved.picks_json);
+            restoredPicks = parsed.map(p => res.players.find(pl => pl.id === p.id) || { id: p.id, name: p.name, team: p.team, points: p.points, avgPoints: null, position: '', gameName: '', isLive: false, isOver: false, isLocked: false });
+          } catch {}
+        }
+        if (restoredPicks.length === 0 && saved.p1_id) {
+          const p1 = res.players.find(p => p.id === saved.p1_id) || { id: saved.p1_id, name: saved.p1_name, team: '', points: saved.p1_pts, avgPoints: null, position: '', gameName: '', isLive: false, isOver: false, isLocked: false };
+          const p2 = saved.p2_id ? (res.players.find(p => p.id === saved.p2_id) || { id: saved.p2_id, name: saved.p2_name, team: '', points: saved.p2_pts, avgPoints: null, position: '', gameName: '', isLive: false, isOver: false, isLocked: false }) : null;
+          restoredPicks = [p1, p2].filter(Boolean);
+        }
+        setPicks(restoredPicks);
         if (saved.locked_in) setLockedIn(true);
       } else {
-        setPicks([null, null]);
+        setPicks([]);
         setLockedIn(false);
       }
       if (res.games.some(g => g.status === "STATUS_IN_PROGRESS")) await doLiveUpdate(res.players, gameIdsRef.current);
@@ -749,7 +746,7 @@ export default function App() {
   async function savePicks(overrideLocked) {
     if (!user) return;
     const isLocked = overrideLocked !== undefined ? overrideLocked : lockedIn;
-    await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, locked_in: isLocked, updated_at: Date.now() });
+    await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, picks_json: JSON.stringify(picks.map(p => ({ id: p.id, name: p.name, team: p.team, points: p.points ?? null }))), locked_in: isLocked, updated_at: Date.now() });
   }
 
   async function loadLeaderboard(currentPlayers) {
@@ -762,13 +759,30 @@ export default function App() {
     const pickMap = {};
     for (const pick of todayPicks) {
       const p1 = livePlayers.find(p => p.id === pick.p1_id), p2 = livePlayers.find(p => p.id === pick.p2_id);
-      const p1pts = p1?.points ?? pick.p1_pts ?? null, p2pts = p2?.points ?? pick.p2_pts ?? null;
+      let total = null;
+      let picksDisplay = pick.p1_name ? `${pick.p1_name} + ${pick.p2_name || '—'}` : null;
+      if (pick.picks_json) {
+        try {
+          const allPicks = JSON.parse(pick.picks_json);
+          const pts = allPicks.map(p => {
+            const live = livePlayers.find(pl => pl.id === p.id);
+            return live?.points ?? p.points ?? null;
+          });
+          if (pts.every(p => p !== null)) total = pts.reduce((a, b) => a + b, 0);
+          picksDisplay = allPicks.map(p => p.name).join(' + ');
+        } catch {}
+      } else {
+        const p1 = livePlayers.find(p => p.id === pick.p1_id), p2 = livePlayers.find(p => p.id === pick.p2_id);
+        const p1pts = p1?.points ?? pick.p1_pts ?? null, p2pts = p2?.points ?? pick.p2_pts ?? null;
+        if (p1pts !== null && p2pts !== null) total = p1pts + p2pts;
+        picksDisplay = pick.p1_name ? `${pick.p1_name} + ${pick.p2_name || '—'}` : null;
+      }
       pickMap[pick.user_id] = {
         userId: pick.user_id, userName: pick.user_name,
         p1Name: pick.p1_name, p2Name: pick.p2_name,
-        p1pts, p2pts,
+        picksDisplay,
         lockedIn: pick.locked_in || false,
-        total: (p1pts !== null && p2pts !== null) ? p1pts + p2pts : null,
+        total,
       };
     }
 
