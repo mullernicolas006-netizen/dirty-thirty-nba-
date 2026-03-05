@@ -140,13 +140,14 @@ app.get("/api/games", async (req, res) => {
           const teamId = NBA_TEAM_IDS[teamAbbr];
           if (!teamId) { console.warn(`No ID for: ${teamAbbr}`); continue; }
           try {
-            const [rosterData, injuredIds] = await Promise.all([
-              espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/roster`),
-              getInjuredPlayerIds(teamId),
-            ]);
+            const rosterData = await espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/roster`);
             const teamName = rosterData.team?.displayName || teamAbbr;
             const athletes = rosterData.athletes || [];
-            const healthy = athletes.filter(a => a?.id && !injuredIds.has(String(a.id)));
+            const healthy = athletes.filter(a => {
+              if (!a?.id) return false;
+              const injStatus = a.injuries?.[0]?.status || "";
+              return injStatus !== "Out" && injStatus !== "Doubtful";
+            });
             for (const a of healthy) {
               players.push({
                 id: String(a.id),
