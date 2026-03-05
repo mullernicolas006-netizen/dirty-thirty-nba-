@@ -340,11 +340,17 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", flex: 1 }}>
           {picks.length === 0 && <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.muted }}>— No players selected</div>}
           {picks.map((pick, i) => (
-            <div key={pick.id} style={{ display: "flex", alignItems: "center", gap: 8, background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: "6px 10px" }}>
-              <div style={{ fontFamily: "'Inter'", fontWeight: 600, fontSize: 12, color: C.text }}>{pick.name}</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>{pick.team}</div>
-              {pick.points !== null && <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 16, color: C.gold }}>{pick.points}</div>}
-              {!lockedIn && <button onClick={() => setPicks(prev => prev.filter(p => p.id !== pick.id))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 11, lineHeight: 1 }}>✕</button>}
+            <div key={pick.id} style={{ display: "flex", alignItems: "center", gap: 8, background: C.accentDim, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: "8px 12px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div style={{ fontFamily: "'Inter'", fontWeight: 600, fontSize: 12, color: C.text }}>{pick.name}</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.accent, fontWeight: 700 }}>{pick.team}</span>
+                  {pick.position && <><span style={{ color: C.border }}>·</span><span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>{pick.position}</span></>}
+                  {pick.avgPoints != null && pick.avgPoints > 0 && <><span style={{ color: C.border }}>·</span><span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>⌀ {Number(pick.avgPoints).toFixed(1)} ppg</span></>}
+                </div>
+              </div>
+              {pick.points !== null && <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 18, color: C.gold, marginLeft: 4 }}>{pick.points}<span style={{ fontSize: 9, fontFamily: "'JetBrains Mono'", color: C.muted, fontWeight: 400 }}> pts</span></div>}
+              {!lockedIn && <button onClick={() => setPicks(prev => prev.filter(p => p.id !== pick.id))} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 11, lineHeight: 1, marginLeft: 2 }}>✕</button>}
             </div>
           ))}
           {!lockedIn && picks.length >= 1 && <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, alignSelf: "center" }}>+ select more</div>}
