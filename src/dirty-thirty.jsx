@@ -278,7 +278,7 @@ function Header({ tab, setTab, user, liveCount }) {
           {liveCount > 0 && <span style={{ marginLeft: 4 }}><Badge label={`${liveCount} LIVE`} color={C.green} blink /></span>}
         </div>
         <nav style={{ display: "flex", gap: 2 }}>
-          {[["pick","PICK"],["leaderboard","BOARD"],["fratvsfrat","FRAT"],["results","RESULTS"]].map(([t,l]) => (
+          {[["pick","PICK"],["leaderboard","BOARD"],["results","RESULTS"],["fratvsfrat","FRAT VS FRAT"]].map(([t,l]) => (
             <button key={t} onClick={() => setTab(t)} style={{ padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "'JetBrains Mono'", fontSize: 10, letterSpacing: 1, background: tab===t ? `${C.accent}22` : "transparent", color: tab===t ? C.accent : C.muted, borderBottom: `2px solid ${tab===t ? C.accent : "transparent"}` }}>{l}</button>
           ))}
         </nav>
@@ -833,9 +833,8 @@ export default function App() {
         if (p1pts !== null && p2pts !== null) total = p1pts + p2pts;
         picksDisplay = pick.p1_name ? `${pick.p1_name} + ${pick.p2_name || '—'}` : null;
       }
-      const pickUser = (await db.getUser(pick.user_id)) || {};
       pickMap[pick.user_id] = {
-        userId: pick.user_id, userName: pick.user_name, frat: pickUser.frat || null,
+        userId: pick.user_id, userName: pick.user_name, frat: null,
         p1Name: pick.p1_name, p2Name: pick.p2_name,
         picksDisplay,
         lockedIn: pick.locked_in || false,
@@ -847,7 +846,7 @@ export default function App() {
     const allUsers = await db.getAllUsers();
     for (const u of allUsers) {
       if (pickMap[u.id]) {
-        entries.push(pickMap[u.id]);
+        entries.push({ ...pickMap[u.id], frat: u.frat || null });
       } else {
         entries.push({ userId: u.id, userName: u.name, frat: u.frat || null, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null });
       }
