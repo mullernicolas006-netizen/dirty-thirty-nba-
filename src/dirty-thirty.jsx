@@ -688,10 +688,10 @@ export default function App() {
       setLiveCount(res.games.filter(g => g.status === "STATUS_IN_PROGRESS").length);
       setPlayers(res.players);
       playersRef.current = res.players;
-      playersRef.current = res.players;
 
+      const allFinal = res.games.length > 0 && res.games.every(g => g.status === "STATUS_FINAL");
       const saved = await db.getPick(user.id, todayStr());
-      if (saved && saved.date === todayStr()) {
+      if (saved && saved.date === todayStr() && !allFinal) {
         let restoredPicks = [];
         if (saved.picks_json) {
           try {
@@ -706,6 +706,9 @@ export default function App() {
         }
         setPicks(restoredPicks);
         if (saved.locked_in) setLockedIn(true);
+      } else if (allFinal) {
+        setPicks([]);
+        setLockedIn(false);
       } else {
         setPicks([]);
         setLockedIn(false);
