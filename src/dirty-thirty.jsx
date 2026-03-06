@@ -658,6 +658,92 @@ function ResultsScreen({ userId, userFrat }) {
 }
 
 // ── APP ROOT ──────────────────────────────────────────────────────
+function FratVsFratScreen({ entries, userFrat }) {
+  const fratMap = {};
+  for (const e of entries) {
+    if (!e.frat || e.frat === "independent") continue;
+    if (!fratMap[e.frat]) fratMap[e.frat] = { fratId: e.frat, members: [], totalScore: 0, validCount: 0 };
+    fratMap[e.frat].members.push(e);
+    const score = e.total !== null && e.total <= 30 ? e.total : 0;
+    fratMap[e.frat].totalScore += score;
+    if (e.total !== null) fratMap[e.frat].validCount++;
+  }
+  const frats = Object.values(fratMap).sort((a, b) => b.totalScore - a.totalScore);
+  const maxScore = Math.max(...frats.map(f => f.totalScore), 1);
+  if (frats.length === 0) return (
+    <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 20px", textAlign: "center" }}>
+      <div style={{ padding: 80, color: C.muted, fontFamily: "'JetBrains Mono'", fontSize: 11 }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🏛️</div>
+        NO FRAT DATA YET
+      </div>
+    </div>
+  );
+  return (
+    <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 20px" }}>
+      <div className="fu" style={{ marginBottom: 28 }}>
+        <h1 style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 38, letterSpacing: 1 }}>FRAT <span style={{ color: C.accent }}>VS</span> FRAT</h1>
+        <p style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.muted, letterSpacing: 2, marginTop: 3 }}>COMBINED DIRTY THIRTY SCORES</p>
+      </div>
+      {frats.length >= 2 && (
+        <div className="fu" style={{ marginBottom: 28, background: C.card, border: "1px solid " + C.border, borderRadius: 16, padding: "28px 24px", position: "relative", overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, letterSpacing: 2, marginBottom: 8 }}>LEADING</div>
+              <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 32, color: C.gold }}>{frats[0].fratId.toUpperCase()}</div>
+              <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 72, color: C.gold, lineHeight: 1 }}>{frats[0].totalScore}</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 4 }}>{frats[0].members.length} MEMBERS</div>
+            </div>
+            <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 48, color: C.border }}>VS</div>
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, letterSpacing: 2, marginBottom: 8 }}>CHASING</div>
+              <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 32, color: C.text }}>{frats[1].fratId.toUpperCase()}</div>
+              <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 72, color: C.text, lineHeight: 1 }}>{frats[1].totalScore}</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 4 }}>{frats[1].members.length} MEMBERS</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 20, height: 6, background: C.border, borderRadius: 3, position: "relative" }}>
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: (frats[0].totalScore / (frats[0].totalScore + frats[1].totalScore) * 100) + "%", background: "linear-gradient(90deg," + C.gold + "," + C.accent + ")", borderRadius: 3 }} />
+          </div>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {frats.map((frat, idx) => {
+          const isMyFrat = frat.fratId === userFrat;
+          const avg = frat.validCount ? (frat.totalScore / frat.validCount).toFixed(1) : "—";
+          return (
+            <div key={frat.fratId} className="fu" style={{ background: isMyFrat ? C.accentDim : C.card, border: "1px solid " + (isMyFrat ? C.accent : C.border), borderRadius: 12, padding: "18px 22px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
+                <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 22, color: idx === 0 ? C.gold : C.muted, width: 30 }}>#{idx + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 28, color: isMyFrat ? C.accent : C.text }}>{frat.fratId.toUpperCase()}</span>
+                    {isMyFrat && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.accent, border: "1px solid " + C.accent + "44", borderRadius: 4, padding: "2px 7px" }}>YOUR FRAT</span>}
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 2 }}>{frat.members.length} MEMBERS · AVG {avg} PTS</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 42, color: idx === 0 ? C.gold : C.text, lineHeight: 1 }}>{frat.totalScore}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted }}>TOTAL PTS</div>
+                </div>
+              </div>
+              <div style={{ height: 4, background: C.border, borderRadius: 2, marginBottom: 12 }}>
+                <div style={{ height: "100%", width: (frat.totalScore / maxScore * 100) + "%", background: idx === 0 ? "linear-gradient(90deg," + C.gold + "," + C.accent + ")" : isMyFrat ? C.accent : C.muted, borderRadius: 2 }} />
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {frat.members.map(m => (
+                  <div key={m.userId} style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: m.total !== null ? (m.total > 30 ? C.red : C.green) : C.muted, background: C.surface, border: "1px solid " + C.border, borderRadius: 6, padding: "3px 8px" }}>
+                    {m.userName} {m.total !== null ? "(" + (m.total > 30 ? "💥" : "") + m.total + ")" : "(—)"}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("pick");
