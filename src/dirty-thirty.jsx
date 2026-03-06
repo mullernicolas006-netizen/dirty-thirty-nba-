@@ -44,7 +44,7 @@ const db = {
         method: "POST",
         prefer: "resolution=merge-duplicates,return=representation",
         headers: { "Prefer": "resolution=merge-duplicates,return=representation" },
-        body: JSON.stringify({ id: user.id, name: user.name, email: user.email, joined: user.joined }),
+        body: JSON.stringify({ id: user.id, name: user.name, email: user.email, joined: user.joined, frat: user.frat || null }),
       });
     } catch(e) { console.error("saveUser error", e); }
   },
@@ -68,6 +68,9 @@ const db = {
       const rows = await sbFetch(`picks?user_id=eq.${encodeURIComponent(userId)}&date=eq.${date}&select=*`);
       return rows?.[0] || null;
     } catch { return null; }
+  },
+  async getFrats() {
+    try { return await sbFetch("frats?select=*&order=name.asc") || []; } catch { return []; }
   },
   async getAllPicksForDate(date) {
     try {
@@ -132,8 +135,14 @@ function LoginScreen({ onLogin }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [emailConfirm, setEmailConfirm] = useState("");
+  const [frat, setFrat] = useState("");
+  const [frats, setFrats] = useState([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    sbFetch("frats?select=*&order=name.asc").then(r => setFrats(r || [])).catch(() => {});
+  }, []);
 
   async function submit() {
     if (!name.trim()) return setErr("Name is required");
@@ -141,6 +150,7 @@ function LoginScreen({ onLogin }) {
     if (!validateEmail(email.trim())) return setErr("Please enter a valid email address (e.g. name@domain.com)");
     if (!emailConfirm.trim()) return setErr("Please confirm your email address");
     if (email.trim().toLowerCase() !== emailConfirm.trim().toLowerCase()) return setErr("Email addresses do not match");
+    if (!frat) return setErr("Please select your fraternity or organization");
     
     setLoading(true);
     const emailLower = email.trim().toLowerCase();
@@ -155,7 +165,7 @@ function LoginScreen({ onLogin }) {
       }
     } catch {}
 
-    const user = { id, name: name.trim(), email: emailLower, joined: Date.now() };
+    const user = { id, name: name.trim(), email: emailLower, joined: Date.now(), frat };
     await db.saveUser(user);
     localStorage.setItem("d30_user", JSON.stringify(user));
     onLogin(user);
@@ -206,6 +216,15 @@ function LoginScreen({ onLogin }) {
                 onKeyDown={e => e.key === "Enter" && submit()}
                 style={{ width: "100%", padding: "11px 14px", background: C.surface, border: `1px solid ${err.includes("match") ? C.red : C.border}`, borderRadius: 8, color: C.text, fontSize: 14 }}
               />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, letterSpacing: 2, display: "block", marginBottom: 7 }}>WHICH FRAT ARE YOU A PART OF?</label>
+              <select value={frat} onChange={e => { setFrat(e.target.value); setErr(""); }}
+                style={{ width: "100%", padding: "11px 14px", background: C.surface, border: `1px solid ${err.includes("frat") ? C.red : C.border}`, borderRadius: 8, color: frat ? C.text : C.muted, fontSize: 14, cursor: "pointer" }}>
+                <option value="">Select your organization...</option>
+                {frats.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                <option value="independent">Independent / None</option>
+              </select>
             </div>
             {err && <p style={{ color: C.red, fontFamily: "'JetBrains Mono'", fontSize: 11, marginBottom: 14, lineHeight: 1.5 }}>⚠ {err}</p>}
             <button onClick={submit} disabled={loading} style={{ width: "100%", padding: 13, background: C.accent, border: "none", borderRadius: 8, color: "#fff", fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 22, letterSpacing: 3, cursor: "pointer", animation: "glow 2s infinite" }}>
@@ -259,7 +278,7 @@ function Header({ tab, setTab, user, liveCount }) {
           {liveCount > 0 && <span style={{ marginLeft: 4 }}><Badge label={`${liveCount} LIVE`} color={C.green} blink /></span>}
         </div>
         <nav style={{ display: "flex", gap: 2 }}>
-          {[["pick","PICK"],["leaderboard","BOARD"],["results","RESULTS"]].map(([t,l]) => (
+          {[["pick","PICK"],["leaderboard","BOARD"],["fratvsfrat","FRAT"],["results","RESULTS"]].map(([t,l]) => (
             <button key={t} onClick={() => setTab(t)} style={{ padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "'JetBrains Mono'", fontSize: 10, letterSpacing: 1, background: tab===t ? `${C.accent}22` : "transparent", color: tab===t ? C.accent : C.muted, borderBottom: `2px solid ${tab===t ? C.accent : "transparent"}` }}>{l}</button>
           ))}
         </nav>
@@ -418,10 +437,14 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────────────
-function LeaderboardScreen({ entries, userId }) {
-  const valid = entries.filter(e => e.total !== null && e.total <= 30).sort((a, b) => scoreDelta(a.total) - scoreDelta(b.total));
-  const noPicks = entries.filter(e => e.total === null);
-  const busts = entries.filter(e => e.total !== null && e.total > 30).sort((a, b) => b.total - a.total);
+function LeaderboardScreen({ entries, userId, userFrat }) {
+  const [fratFilter, setFratFilter] = useState("myfrat");
+  const filteredEntries = fratFilter === "myfrat" && userFrat && userFrat !== "independent"
+    ? entries.filter(e => e.frat === userFrat)
+    : entries;
+  const valid = filteredEntries.filter(e => e.total !== null && e.total <= 30).sort((a, b) => scoreDelta(a.total) - scoreDelta(b.total));
+  const noPicks = filteredEntries.filter(e => e.total === null);
+  const busts = filteredEntries.filter(e => e.total !== null && e.total > 30).sort((a, b) => b.total - a.total);
   const leader = valid[0] || null;
   const medals = ["🥇","🥈","🥉"];
 
@@ -457,9 +480,20 @@ function LeaderboardScreen({ entries, userId }) {
 
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 20px" }}>
-      <div className="fu" style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 38, letterSpacing: 1 }}>LEADER<span style={{ color: C.accent }}>BOARD</span></h1>
-        <p style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.muted, letterSpacing: 2, marginTop: 3 }}>{entries.length} PLAYERS REGISTERED TODAY</p>
+      <div className="fu" style={{ marginBottom: 24, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+        <div>
+          <h1 style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 38, letterSpacing: 1 }}>LEADER<span style={{ color: C.accent }}>BOARD</span></h1>
+          <p style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.muted, letterSpacing: 2, marginTop: 3 }}>{filteredEntries.length} PLAYERS</p>
+        </div>
+        {userFrat && userFrat !== "independent" && (
+          <div style={{ display:"flex", gap:4, background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:4 }}>
+            {[["myfrat","MY FRAT"],["all","ALL PLAYERS"]].map(([v,l]) => (
+              <button key={v} onClick={() => setFratFilter(v)} style={{ padding:"6px 14px", borderRadius:6, border:"none", cursor:"pointer", fontFamily:"'JetBrains Mono'", fontSize:10, letterSpacing:1, background:fratFilter===v?C.accentDim:"transparent", color:fratFilter===v?C.accent:C.muted }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Leader highlight */}
@@ -518,7 +552,8 @@ function LeaderboardScreen({ entries, userId }) {
 }
 
 // ── RESULTS ───────────────────────────────────────────────────────
-function ResultsScreen({ userId }) {
+function ResultsScreen({ userId, userFrat }) {
+  const [fratFilter, setFratFilter] = useState("myfrat");
   const [dates, setDates] = useState([]);
   const [selDate, setSelDate] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -548,7 +583,7 @@ function ResultsScreen({ userId }) {
         for (const p of picks||[]) {
           map[p.user_id] = { userId: p.user_id, userName: p.user_name, p1Name: p.p1_name, p2Name: p.p2_name, p1pts: p.p1_pts, p2pts: p.p2_pts, total: (p.p1_pts!==null&&p.p2_pts!==null)?p.p1_pts+p.p2_pts:null };
         }
-        const result = users.map(u => map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null });
+        const result = users.map(u => ({ ...(map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null }), frat: u.frat || null }));
         setEntries(result);
       } catch {}
       setLoading(false);
@@ -556,15 +591,27 @@ function ResultsScreen({ userId }) {
     load();
   }, [selDate]);
 
-  const ranked = rankEntries(entries.filter(e=>e.total!==null));
-  const noPicks = entries.filter(e=>e.total===null);
+  const filteredForResults = fratFilter === "myfrat" && userFrat && userFrat !== "independent"
+    ? entries.filter(e => e.frat === userFrat)
+    : entries;
+  const ranked = rankEntries(filteredForResults.filter(e=>e.total!==null));
+  const noPicks = filteredForResults.filter(e=>e.total===null);
   const winner = ranked.find(e=>e.total!==null&&e.total<=30);
   const isToday = selDate === todayStr();
 
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: "24px 20px" }}>
       <div className="fu" style={{ marginBottom: 24, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
-        <h1 style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 38, letterSpacing: 1 }}>FINAL <span style={{ color: C.gold }}>RESULTS</span></h1>
+        <div>
+          <h1 style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 38, letterSpacing: 1 }}>FINAL <span style={{ color: C.gold }}>RESULTS</span></h1>
+          {userFrat && userFrat !== "independent" && (
+            <div style={{ display:"flex", gap:4, background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:4, marginTop:8 }}>
+              {[["myfrat","MY FRAT"],["all","ALL PLAYERS"]].map(([v,l]) => (
+                <button key={v} onClick={() => setFratFilter(v)} style={{ padding:"6px 14px", borderRadius:6, border:"none", cursor:"pointer", fontFamily:"'JetBrains Mono'", fontSize:10, letterSpacing:1, background:fratFilter===v?C.accentDim:"transparent", color:fratFilter===v?C.accent:C.muted }}>{l}</button>
+              ))}
+            </div>
+          )}
+        </div>
         {dates.length > 0 && (
           <select value={selDate||""} onChange={e=>setSelDate(e.target.value)}
             style={{ padding:"7px 14px", background:C.card, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, fontFamily:"'JetBrains Mono'", fontSize:11, cursor:"pointer" }}>
@@ -786,8 +833,9 @@ export default function App() {
         if (p1pts !== null && p2pts !== null) total = p1pts + p2pts;
         picksDisplay = pick.p1_name ? `${pick.p1_name} + ${pick.p2_name || '—'}` : null;
       }
+      const pickUser = (await db.getUser(pick.user_id)) || {};
       pickMap[pick.user_id] = {
-        userId: pick.user_id, userName: pick.user_name,
+        userId: pick.user_id, userName: pick.user_name, frat: pickUser.frat || null,
         p1Name: pick.p1_name, p2Name: pick.p2_name,
         picksDisplay,
         lockedIn: pick.locked_in || false,
@@ -801,7 +849,7 @@ export default function App() {
       if (pickMap[u.id]) {
         entries.push(pickMap[u.id]);
       } else {
-        entries.push({ userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null });
+        entries.push({ userId: u.id, userName: u.name, frat: u.frat || null, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null });
       }
     }
 
@@ -822,8 +870,9 @@ export default function App() {
         <Header tab={tab} setTab={setTab} user={user} liveCount={liveCount} />
         <div style={{ flex: 1 }}>
           {tab === "pick" && <PickScreen user={user} players={players} picks={picks} setPicks={setPicks} loading={loadingPlayers} error={apiError} nextGameDate={nextGameDate} lockedIn={lockedIn} setLockedIn={setLockedIn} savePicks={savePicks} />}
-          {tab === "leaderboard" && <LeaderboardScreen entries={leaderboard} userId={user.id} />}
-          {tab === "results" && <ResultsScreen userId={user.id} />}
+          {tab === "leaderboard" && <LeaderboardScreen entries={leaderboard} userId={user.id} userFrat={user.frat} />}
+          {tab === "fratvsfrat" && <FratVsFratScreen entries={leaderboard} userFrat={user.frat} />}
+          {tab === "results" && <ResultsScreen userId={user.id} userFrat={user.frat} />}
         </div>
         <Footer />
       </div>
