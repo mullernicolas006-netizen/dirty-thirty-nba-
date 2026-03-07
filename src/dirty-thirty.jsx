@@ -380,10 +380,20 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: scoreColor, letterSpacing: 1, marginTop: 1 }}>
             {total !== null ? isBust ? "💥 BUST!" : total === 30 ? "🎯 PERFECT!" : `${30 - total} FROM 30` : "/ 30"}
           </div>
-          {bothPicked && !lockedIn && (
-            <button onClick={async () => { setLockedIn(true); await savePicks(true); }} style={{ marginTop: 10, padding: "9px 22px", background: C.accent, border: "none", borderRadius: 8, color: "#fff", fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 16, letterSpacing: 2, cursor: "pointer" }}>
-              🔒 LOCK IN
-            </button>
+          {!lockedIn && (
+            <div style={{ marginTop: 10 }}>
+              <button onClick={async () => {
+                if (!bothPicked) return;
+                setLockedIn(true); await savePicks(true);
+              }} style={{ padding: "9px 22px", background: bothPicked ? C.accent : C.muted, border: "none", borderRadius: 8, color: bothPicked ? "#fff" : C.bg, fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 16, letterSpacing: 2, cursor: bothPicked ? "pointer" : "default", opacity: bothPicked ? 1 : 0.5, transition: "all 0.2s" }}>
+                🔒 LOCK IN
+              </button>
+              {!bothPicked && picks.length > 0 && (
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 6, letterSpacing: 0.5 }}>
+                  {picks.length < 2 ? "Select at least 2 players" : "Pick players from different teams"}
+                </div>
+              )}
+            </div>
           )}
           {lockedIn && (
             <div style={{ marginTop: 10, padding: "6px 16px", background: `${C.green}22`, border: `1px solid ${C.green}55`, borderRadius: 8, fontFamily: "'JetBrains Mono'", fontSize: 10, color: C.green, letterSpacing: 1 }}>
