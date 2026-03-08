@@ -593,8 +593,7 @@ function ResultsScreen({ userId, userFrat }) {
         for (const p of picks||[]) {
           map[p.user_id] = { userId: p.user_id, userName: p.user_name, p1Name: p.p1_name, p2Name: p.p2_name, p1pts: p.p1_pts, p2pts: p.p2_pts, total: (p.p1_pts!==null&&p.p2_pts!==null)?p.p1_pts+p.p2_pts:null };
         }
-        const result = users.map(u => ({ ...(map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null }), frat: u.frat || null, allPicks };
-        });
+        const result = users.map(u => ({ ...(map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null }), frat: u.frat || null, allPicks }));
         setEntries(result);
       } catch {}
       setLoading(false);
