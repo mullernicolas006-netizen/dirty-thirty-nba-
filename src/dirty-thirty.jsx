@@ -812,9 +812,10 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     if (!lockedIn) return;
-  }, [lockedIn]);
+  }, [lockedIn, savePicks]);
 
   async function loadTodayPlayers() {
+    setNextGameDate(null);
     setLoadingPlayers(true); setApiError(null);
     try {
       // Try today first
@@ -874,7 +875,7 @@ export default function App() {
 
   async function refreshLiveScores() {
     if (gameIdsRef.current.length === 0) return;
-    await doLiveUpdate(players, gameIdsRef.current);
+    await doLiveUpdate(playersRef.current, gameIdsRef.current);
   }
 
   async function doLiveUpdate(currentPlayers, gameIds) {
@@ -894,7 +895,6 @@ export default function App() {
       });
       setPlayers(updatedPlayers);
       playersRef.current = updatedPlayers;
-      playersRef.current = updatedPlayers;
       setLiveCount(live);
       if (live === 0) setTimeout(() => savePicks(), 500);
       loadLeaderboard(updatedPlayers);
@@ -912,10 +912,13 @@ export default function App() {
     await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, picks_json: JSON.stringify(picks.map(p => ({ id: p.id, name: p.name, team: p.team, points: p.points ?? null }))), locked_in: isLocked, updated_at: Date.now() });
   }
 
+  const isFetchingLeaderboard = useRef(false);
   async function loadLeaderboard(currentPlayers) {
+    if (isFetchingLeaderboard.current) return;
+    isFetchingLeaderboard.current = true;
+    try {
     const livePlayers = currentPlayers || playersRef.current || [];
-    const allDates = await db.getPickDates();
-    const dateKey = allDates && allDates.length > 0 ? allDates[0] : todayStr();
+    const dateKey = todayStr();
     const entries = [];
 
     // Load today's picks from Supabase
@@ -932,8 +935,7 @@ export default function App() {
             const live = livePlayers.find(pl => pl.id === p.id);
             return live?.points ?? p.points ?? null;
           });
-          const validPts = pts.filter(p => p !== null);
-          if (validPts.length > 0) total = pts.reduce((a, b) => a + (b ?? 0), 0);
+          if (pts.every(p => p !== null)) total = pts.reduce((a, b) => a + b, 0);
           picksDisplay = allPicks.map(p => p.name).join(' + ');
         } catch {}
       } else {
