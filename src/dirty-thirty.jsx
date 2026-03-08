@@ -646,7 +646,7 @@ function ResultsScreen({ userId, userFrat }) {
             <div className="fu" style={{ background:C.goldDim, border:`1px solid ${C.gold}44`, borderRadius:14, padding:30, textAlign:"center", marginBottom:24 }}>
               <div style={{fontSize:52,marginBottom:6}}>🏆</div>
               <div style={{fontFamily:"'Barlow Condensed'",fontWeight:900,fontSize:48,color:C.gold,letterSpacing:3}}>{winner.userName}</div>
-              <div style={{fontFamily:"'JetBrains Mono'",fontSize:11,color:C.muted,marginTop:8}}>{winner.p1Name} ({winner.p1pts}) + {winner.p2Name} ({winner.p2pts}) = <span style={{color:C.gold}}>{winner.total} Points</span></div>
+              <div style={{fontFamily:"'JetBrains Mono'",fontSize:11,color:C.muted,marginTop:8}}>{winner.allPicks&&winner.allPicks.length>0?winner.allPicks.map((p,i)=><span key={i}>{p.name} ({p.points??'?'}){i<winner.allPicks.length-1?" + ":""}</span>):(winner.p1Name+" + "+winner.p2Name)} = <span style={{color:C.gold}}>{winner.total} Points</span></div>
               <div style={{fontFamily:"'JetBrains Mono'",fontSize:11,color:C.gold,marginTop:5,letterSpacing:1}}>{winner.total===30?"🎯 PERFECT DIRTY THIRTY!":`JUST ${30-winner.total} POINTS FROM DIRTY THIRTY`}</div>
             </div>
           ) : (
@@ -662,7 +662,7 @@ function ResultsScreen({ userId, userFrat }) {
                   <div style={{width:34,textAlign:"center"}}>{idx===0&&!isBust&&entry.total!==null?<span style={{fontSize:19}}>🥇</span>:<span style={{fontFamily:"'Barlow Condensed'",fontWeight:700,fontSize:17,color:C.muted}}>#{idx+1}</span>}</div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:"'Inter'",fontWeight:600,fontSize:14,color:isMe?C.accent:C.text}}>{entry.userName}{isMe&&<span style={{fontFamily:"'JetBrains Mono'",fontSize:9,color:C.muted,marginLeft:7}}>(YOU)</span>}</div>
-                    <div style={{fontFamily:"'JetBrains Mono'",fontSize:9,color:C.muted,marginTop:3}}>{entry.p1Name?`${entry.p1Name} (${entry.p1pts??'?'}) + ${entry.p2Name} (${entry.p2pts??'?'})`:"No picks"}</div>
+                    <div style={{fontFamily:"'JetBrains Mono'",fontSize:9,color:C.muted,marginTop:3,display:"flex",flexWrap:"wrap",gap:4}}>{entry.allPicks&&entry.allPicks.length>0?entry.allPicks.map((p,i)=><span key={i}>{p.name} <span style={{color:p.points!==null?C.gold:C.muted}}>({p.points??'?'})</span>{i<entry.allPicks.length-1?" +":""}</span>):entry.p1Name?entry.p1Name+" + "+entry.p2Name:"No picks"}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
                     <div style={{fontFamily:"'Barlow Condensed'",fontWeight:800,fontSize:28,color:isBust?C.red:isPerfect?C.gold:entry.total!==null?C.green:C.muted}}>{entry.total??'—'}</div>
