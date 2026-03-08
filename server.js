@@ -308,8 +308,16 @@ async function updateAllPicksWithLiveScores() {
     for (const pick of picks) {
       const p1pts = pick.p1_id && playerPoints[pick.p1_id] !== undefined ? playerPoints[pick.p1_id] : pick.p1_pts;
       const p2pts = pick.p2_id && playerPoints[pick.p2_id] !== undefined ? playerPoints[pick.p2_id] : pick.p2_pts;
-      if (p1pts === pick.p1_pts && p2pts === pick.p2_pts) continue;
-      await sbFetch(`picks?id=eq.${encodeURIComponent(pick.id)}`, { method: "PATCH", body: JSON.stringify({ p1_pts: p1pts, p2_pts: p2pts, updated_at: Date.now() }) });
+      let updatedPicksJson = pick.picks_json;
+      if (pick.picks_json) {
+        try {
+          const parsed = JSON.parse(pick.picks_json);
+          const updated = parsed.map(p => ({ ...p, points: playerPoints[String(p.id)] !== undefined ? playerPoints[String(p.id)] : p.points }));
+          updatedPicksJson = JSON.stringify(updated);
+        } catch {}
+      }
+      if (p1pts === pick.p1_pts && p2pts === pick.p2_pts && updatedPicksJson === pick.picks_json) continue;
+      await sbFetch(`picks?id=eq.${encodeURIComponent(pick.id)}`, { method: "PATCH", body: JSON.stringify({ p1_pts: p1pts, p2_pts: p2pts, picks_json: updatedPicksJson, updated_at: Date.now() }) });
     }
     console.log(`[PickUpdater] Updated ${picks.length} picks`);
   } catch (e) { console.warn("[PickUpdater] Error:", e.message); }
