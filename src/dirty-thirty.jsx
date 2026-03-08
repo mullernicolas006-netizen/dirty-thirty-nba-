@@ -72,6 +72,13 @@ const db = {
   async getFrats() {
     try { return await sbFetch("frats?select=*&order=name.asc") || []; } catch { return []; }
   },
+  async getPickDates() {
+    try {
+      const rows = await sbFetch("picks?select=date&order=date.desc") || [];
+      const unique = [...new Set(rows.map(r => r.date))];
+      return unique;
+    } catch { return []; }
+  },
   async getAllPicksForDate(date) {
     try {
       return await sbFetch(`picks?date=eq.${date}&select=*`) || [];
@@ -903,7 +910,8 @@ export default function App() {
 
   async function loadLeaderboard(currentPlayers) {
     const livePlayers = currentPlayers || playersRef.current || [];
-    const dateKey = todayStr();
+    const allDates = await db.getPickDates();
+    const dateKey = allDates && allDates.length > 0 ? allDates[0] : todayStr();
     const entries = [];
 
     // Load today's picks from Supabase
