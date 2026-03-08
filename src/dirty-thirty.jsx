@@ -601,7 +601,7 @@ function ResultsScreen({ userId, userFrat }) {
           let allPicks = [];
           if (p.picks_json) { try { allPicks = JSON.parse(p.picks_json); } catch {} }
           else if (p.p1_name) { allPicks = [{ id: p.p1_id, name: p.p1_name, points: p.p1_pts??null }, p.p2_id?{ id: p.p2_id, name: p.p2_name, points: p.p2_pts??null }:null].filter(Boolean); }
-          const total = allPicks.length > 0 && allPicks.every(x=>x.points!==null) ? allPicks.reduce((s,x)=>s+x.points,0) : (p.p1_pts!==null&&p.p2_pts!==null)?p.p1_pts+p.p2_pts:null;
+          const total = allPicks.length > 0 && allPicks.some(x=>x.points!==null) ? allPicks.reduce((s,x)=>s+(x.points??0),0) : (p.p1_pts!==null||p.p2_pts!==null)?(p.p1_pts??0)+(p.p2_pts??0):null;
           map[p.user_id] = { userId: p.user_id, userName: p.user_name, p1Name: p.p1_name, p2Name: p.p2_name, p1pts: p.p1_pts, p2pts: p.p2_pts, total, allPicks };
         }
         const result = users.map(u => ({ ...(map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null, allPicks: [] }), frat: u.frat || null }));
