@@ -978,6 +978,7 @@ export default function App() {
     }
 
     setLeaderboard(entries);
+    } finally { isFetchingLeaderboard.current = false; }
   }
 
   if (!user) return <><Styles /><LoginScreen onLogin={u => setUser(u)} /></>;
