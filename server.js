@@ -146,7 +146,7 @@ app.get("/api/games", async (req, res) => {
             const healthy = athletes.filter(a => {
               if (!a?.id) return false;
               const injStatus = a.injuries?.[0]?.status || "";
-              return injStatus !== "Out" && injStatus !== "Doubtful";
+              return injStatus !== "Out" && injStatus !== "Doubtful" && injStatus !== "Suspension" && injStatus !== "Suspended";
             });
             for (const a of healthy) {
               players.push({
