@@ -903,9 +903,7 @@ export default function App() {
 
   async function loadLeaderboard(currentPlayers) {
     const livePlayers = currentPlayers || playersRef.current || [];
-    const games = gamesRef?.current || [];
-    const allFinalNow = games.length > 0 && games.every(g => g.status === "STATUS_FINAL");
-    const dateKey = allFinalNow ? todayStr() : (games[0]?.date || todayStr());
+    const dateKey = todayStr();
     const entries = [];
 
     // Load today's picks from Supabase
