@@ -334,7 +334,7 @@ function PickScreen({ user, players, picks, setPicks, loading, error, nextGameDa
 
   const pick1 = picks[0], pick2 = picks[1];
   const bothPicked = picks.length >= 2 && new Set(picks.map(p => p?.team)).size >= 2;
-  const anyLive = picks.some(p => p?.isLive || p?.isOver); const allHavePoints = picks.length >= 2 && picks.every(p => p?.points !== null); const total = picks.length >= 2 && (anyLive || allHavePoints) ? picks.reduce((sum, p) => sum + (p?.points ?? 0), 0) : null;
+  const total = picks.length >= 1 && picks.some(p => p?.points !== null) ? picks.reduce((sum, p) => sum + (p?.points ?? 0), 0) : null;
   const isBust = total !== null && total > 30;
   const isLive = picks.some(p => p?.isLive);
   const teams = ["ALL", ...new Set(players.map(p => p.team).filter(Boolean).sort())];
