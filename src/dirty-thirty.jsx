@@ -932,7 +932,8 @@ export default function App() {
             const live = livePlayers.find(pl => pl.id === p.id);
             return live?.points ?? p.points ?? null;
           });
-          if (pts.every(p => p !== null)) total = pts.reduce((a, b) => a + b, 0);
+          const validPts = pts.filter(p => p !== null);
+          if (validPts.length > 0) total = pts.reduce((a, b) => a + (b ?? 0), 0);
           picksDisplay = allPicks.map(p => p.name).join(' + ');
         } catch {}
       } else {
