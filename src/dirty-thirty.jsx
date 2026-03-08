@@ -800,7 +800,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    savePicks();
+    if (!lockedIn) return;
   }, [lockedIn]);
 
   async function loadTodayPlayers() {
