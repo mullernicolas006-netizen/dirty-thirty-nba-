@@ -473,7 +473,7 @@ function LeaderboardScreen({ entries, userId, userFrat }) {
             {entry.userName}{isMe && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginLeft: 7 }}>(YOU)</span>}
           </div>
           <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 3 }}>
-            {entry.p1Name ? `${entry.picksDisplay || (entry.p1Name ? entry.p1Name + " + " + (entry.p2Name || "—") : "")}${entry.lockedIn ? " 🔒" : ""}` : <span style={{ fontStyle: "italic" }}>{entry.lockedIn ? "🔒 LOCKED IN" : "No picks yet"}</span>}
+            {entry.allPicks && entry.allPicks.length > 0 ? entry.allPicks.map((p,i) => <span key={i} style={{marginRight:5}}>{p.name} <span style={{color:p.points!==null?C.gold:C.muted}}>({p.points??'?'})</span>{i<entry.allPicks.length-1?" +":""}</span>) : entry.p1Name ? <span>{entry.picksDisplay}</span> : <span style={{fontStyle:"italic"}}>{entry.lockedIn?"🔒 LOCKED IN":"No picks yet"}</span>}
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -593,7 +593,8 @@ function ResultsScreen({ userId, userFrat }) {
         for (const p of picks||[]) {
           map[p.user_id] = { userId: p.user_id, userName: p.user_name, p1Name: p.p1_name, p2Name: p.p2_name, p1pts: p.p1_pts, p2pts: p.p2_pts, total: (p.p1_pts!==null&&p.p2_pts!==null)?p.p1_pts+p.p2_pts:null };
         }
-        const result = users.map(u => ({ ...(map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null }), frat: u.frat || null }));
+        const result = users.map(u => ({ ...(map[u.id] || { userId: u.id, userName: u.name, p1Name: null, p2Name: null, p1pts: null, p2pts: null, total: null }), frat: u.frat || null, allPicks };
+        });
         setEntries(result);
       } catch {}
       setLoading(false);
@@ -929,10 +930,19 @@ export default function App() {
         if (p1pts !== null && p2pts !== null) total = p1pts + p2pts;
         picksDisplay = pick.p1_name ? `${pick.p1_name} + ${pick.p2_name || '—'}` : null;
       }
+      let allPicks = [];
+      if (pick.picks_json) {
+        try {
+          const parsed = JSON.parse(pick.picks_json);
+          allPicks = parsed.map(p => { const live = livePlayers.find(pl => pl.id === p.id); return { id: p.id, name: p.name, points: live?.points ?? p.points ?? null }; });
+        } catch {}
+      } else if (pick.p1_name) {
+        allPicks = [{ id: pick.p1_id, name: pick.p1_name, points: pick.p1_pts ?? null }, pick.p2_id ? { id: pick.p2_id, name: pick.p2_name, points: pick.p2_pts ?? null } : null].filter(Boolean);
+      }
       pickMap[pick.user_id] = {
         userId: pick.user_id, userName: pick.user_name, frat: null,
         p1Name: pick.p1_name, p2Name: pick.p2_name,
-        picksDisplay,
+        picksDisplay, allPicks,
         lockedIn: pick.locked_in || false,
         total,
       };
