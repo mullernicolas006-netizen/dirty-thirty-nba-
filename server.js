@@ -208,7 +208,9 @@ app.get("/api/games", async (req, res) => {
         const sorted = [...teamPlayers].sort((a, b) => (b.avgPoints || 0) - (a.avgPoints || 0));
         finalPlayers.push(...sorted.slice(0, 7));
       } else {
-        finalPlayers.push(...teamPlayers);
+        // Live/Final: only show top 7 by avgPoints, with live points
+        const sorted = [...teamPlayers].sort((a, b) => (b.avgPoints || 0) - (a.avgPoints || 0));
+        finalPlayers.push(...sorted.slice(0, 7));
       }
     }
 
