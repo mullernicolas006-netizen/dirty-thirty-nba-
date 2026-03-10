@@ -521,7 +521,7 @@ function LeaderboardScreen({ entries, userId, userFrat }) {
             <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.gold, letterSpacing: 2, marginBottom: 4 }}>CURRENTLY LEADING</div>
             <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 900, fontSize: 28, color: C.text }}>{leader.userName}</div>
             <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 2 }}>
-              {leader.p1Name ? `${leader.p1Name} (${leader.p1pts ?? "?"}) + ${leader.p2Name} (${leader.p2pts ?? "?"})` : ""}
+              {leader.allPicks && leader.allPicks.length > 0 ? leader.allPicks.map((p,i) => <span key={i} style={{marginRight:5}}>{p.name} <span style={{color:p.points!==null?C.gold:C.muted}}>({p.points??'?'})</span>{i<leader.allPicks.length-1?" +":""}</span>) : leader.p1Name ? leader.p1Name + " + " + leader.p2Name : ""}
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -551,7 +551,7 @@ function LeaderboardScreen({ entries, userId, userFrat }) {
                 <div style={{ width: 34, textAlign: "center" }}><span style={{ fontSize: 16 }}>💥</span></div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: "'Inter'", fontWeight: 600, fontSize: 14, color: C.red }}>{entry.userName}{entry.userId === userId && <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginLeft: 7 }}>(YOU)</span>}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 3 }}>{entry.p1Name} ({entry.p1pts}) + {entry.p2Name} ({entry.p2pts})</div>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: C.muted, marginTop: 3, display:"flex", flexWrap:"wrap", gap:4 }}>{entry.allPicks && entry.allPicks.length > 0 ? entry.allPicks.map((p,i) => <span key={i}>{p.name} <span style={{color:C.red}}>({p.points??'?'})</span>{i<entry.allPicks.length-1?" +":""}</span>) : entry.p1Name ? entry.p1Name + " + " + entry.p2Name : ""}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontFamily: "'Barlow Condensed'", fontWeight: 800, fontSize: 28, color: C.red }}>{entry.total}</div>
@@ -804,12 +804,9 @@ export default function App() {
     return () => clearInterval(iv);
   }, [user, players]);
 
-  const isRestoringRef = useRef(false);
   useEffect(() => {
     if (!user) return;
-    if (picks.length === 0) return;
-    if (isRestoringRef.current) return;
-    if (!lockedIn) { savePicks(); loadLeaderboard(); }
+    loadLeaderboard();
   }, [picks]);
 
   useEffect(() => {
