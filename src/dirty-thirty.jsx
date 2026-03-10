@@ -787,6 +787,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     loadTodayPlayers();
+    const ivGames = setInterval(loadTodayPlayers, 5 * 60 * 1000); // check every 5 min for game state changes
     loadLeaderboard();
   }, [user]);
 
@@ -794,7 +795,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     const iv = setInterval(loadLeaderboard, REFRESH_INTERVAL);
-    return () => clearInterval(iv);
+    return () => { clearInterval(iv); clearInterval(ivGames); };
   }, [user]);
 
   useEffect(() => {
