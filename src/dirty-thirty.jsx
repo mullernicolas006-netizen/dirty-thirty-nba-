@@ -897,7 +897,6 @@ export default function App() {
       setPlayers(updatedPlayers);
       playersRef.current = updatedPlayers;
       setLiveCount(live);
-      if (live === 0) setTimeout(() => savePicks(), 500);
       loadLeaderboard(updatedPlayers);
       setPicks(prev => prev.map(pick => {
         if (!pick) return null;
@@ -909,6 +908,7 @@ export default function App() {
 
   async function savePicks(overrideLocked) {
     if (!user) return;
+    if (picks.length === 0) return;
     const isLocked = overrideLocked !== undefined ? overrideLocked : lockedIn;
     await db.savePick({ id: `${user.id}:${todayStr()}`, user_id: user.id, user_name: user.name, date: todayStr(), p1_id: picks[0]?.id || null, p1_name: picks[0]?.name || null, p1_pts: picks[0]?.points ?? null, p2_id: picks[1]?.id || null, p2_name: picks[1]?.name || null, p2_pts: picks[1]?.points ?? null, picks_json: JSON.stringify(picks.map(p => ({ id: p.id, name: p.name, team: p.team, points: p.points ?? null }))), locked_in: isLocked, updated_at: Date.now() });
   }
