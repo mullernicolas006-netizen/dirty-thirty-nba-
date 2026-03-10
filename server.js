@@ -275,8 +275,7 @@ async function sbFetch(path, options = {}) {
 
 function todayStr() {
   const now = new Date();
-  const est = new Date(now.getTime() + (-5 * 60 + now.getTimezoneOffset()) * 60000);
-  return est.toISOString().slice(0, 10);
+  return new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })).toLocaleDateString("en-CA");
 }
 
 async function updateAllPicksWithLiveScores() {
