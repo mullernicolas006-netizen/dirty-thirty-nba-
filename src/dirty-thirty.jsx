@@ -804,9 +804,11 @@ export default function App() {
     return () => clearInterval(iv);
   }, [user, players]);
 
+  const isRestoringRef = useRef(false);
   useEffect(() => {
     if (!user) return;
     if (picks.length === 0) return;
+    if (isRestoringRef.current) return;
     if (!lockedIn) { savePicks(); loadLeaderboard(); }
   }, [picks]);
 
@@ -860,8 +862,10 @@ export default function App() {
           const p2 = saved.p2_id ? (res.players.find(p => p.id === saved.p2_id) || { id: saved.p2_id, name: saved.p2_name, team: '', points: saved.p2_pts, avgPoints: null, position: '', gameName: '', isLive: false, isOver: false, isLocked: false }) : null;
           restoredPicks = [p1, p2].filter(Boolean);
         }
+        isRestoringRef.current = true;
         setPicks(restoredPicks);
         if (saved.locked_in) setLockedIn(true);
+        setTimeout(() => { isRestoringRef.current = false; }, 100);
       } else if (allFinal) {
         setPicks([]);
         setLockedIn(false);
