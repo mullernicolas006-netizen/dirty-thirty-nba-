@@ -847,7 +847,7 @@ export default function App() {
 
       const allFinal = res.games.length > 0 && res.games.every(g => g.status === "STATUS_FINAL");
       const saved = await db.getPick(user.id, todayStr());
-      if (saved && saved.date === todayStr() && !allFinal) {
+      if (saved && saved.picks_json && !allFinal) {
         let restoredPicks = [];
         if (saved.picks_json) {
           try {
