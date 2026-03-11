@@ -12,6 +12,7 @@ const C = {
   text: "#e8edf5", muted: "#4a6080", subtle: "#1e2d4a",
 };
 
+const API_BASE = "https://dirty-thirty-nba.onrender.com";
 const SUPABASE_URL = "https://ygykuhcwpfltfgehvphg.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlneWt1aGN3cGZsdGZnZWh2cGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4Nzc3OTIsImV4cCI6MjA4NzQ1Mzc5Mn0.4yMdYVvYSP6qUZmgFoaQlBzxnrT59ulKb1oJXEIFhsg";
 
