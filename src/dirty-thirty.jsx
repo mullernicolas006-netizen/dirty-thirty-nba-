@@ -66,7 +66,7 @@ const db = {
   },
   async getPick(userId, date) {
     try {
-      const rows = await sbFetch(`picks?user_id=eq.${encodeURIComponent(userId)}&date=eq.${date}&select=*`);
+      const rows = await sbFetch(`picks?user_id=eq.${encodeURIComponent(userId)}&order=date.desc&limit=1&select=*`);
       return rows?.[0] || null;
     } catch { return null; }
   },
