@@ -852,7 +852,7 @@ export default function App() {
         if (saved.picks_json) {
           try {
             const parsed = JSON.parse(saved.picks_json);
-            restoredPicks = parsed.map(p => res.players.find(pl => pl.id === p.id) || { id: p.id, name: p.name, team: p.team, points: p.points, avgPoints: null, position: '', gameName: '', isLive: false, isOver: false, isLocked: false });
+            restoredPicks = parsed.map(p => { const live = res.players.find(pl => pl.id === p.id); return live ? { ...live, points: live.points ?? p.points } : { id: p.id, name: p.name, team: p.team, points: p.points ?? null, avgPoints: null, position: '', gameName: '', isLive: false, isOver: true, isLocked: true }; });
           } catch {}
         }
         if (restoredPicks.length === 0 && saved.p1_id) {
