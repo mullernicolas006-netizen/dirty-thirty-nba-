@@ -922,7 +922,8 @@ export default function App() {
     isFetchingLeaderboard.current = true;
     try {
     const livePlayers = currentPlayers || playersRef.current || [];
-    const dateKey = todayStr();
+    const allDates = await db.getPickDates();
+    const dateKey = allDates && allDates.length > 0 ? allDates[0] : todayStr();
     const entries = [];
 
     // Load today's picks from Supabase
