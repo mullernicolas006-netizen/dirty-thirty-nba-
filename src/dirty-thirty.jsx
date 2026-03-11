@@ -916,6 +916,7 @@ export default function App() {
   }
 
   const isFetchingLeaderboard = useRef(false);
+  const isRestoringRef = useRef(false);
   async function loadLeaderboard(currentPlayers) {
     if (isFetchingLeaderboard.current) return;
     isFetchingLeaderboard.current = true;
