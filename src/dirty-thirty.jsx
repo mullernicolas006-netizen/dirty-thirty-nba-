@@ -872,7 +872,7 @@ export default function App() {
         setLockedIn(false);
       }
       if (res.games.some(g => g.status === "STATUS_IN_PROGRESS" || g.status === "STATUS_FINAL")) await doLiveUpdate(res.players, gameIdsRef.current);
-    } catch (e) { if (!players.length) setApiError(e.message); }
+    } catch (e) { console.error("loadTodayPlayers error:", e.message, e.stack); if (!players.length) setApiError(e.message); }
     finally { setLoadingPlayers(false); }
   }
 
